@@ -16,29 +16,27 @@ Database Integration: Saves all scraped data into a structured format for long-t
 1. Prerequisites
 Ensure you have uv installed on your system:
 
-Bash
-
+```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 2. Installation
 Clone the repository and sync the environment:
 
-'''
-# bash
+```bash
 git clone <your-repo-url>
 cd flight_price_tracker
-'''
+```
 
 ### Create virtual environment and install dependencies
-'''
+```bash
 uv sync
-'''
+```
 
 3. Configuration
 Create a searches.json file in the root directory to define the flights you want to track:
 
-'''
-# JSON
-
+```json
 [
   {
     "origin": "VIE",
@@ -49,35 +47,32 @@ Create a searches.json file in the root directory to define the flights you want
     "max_stay_days": 7
   }
 ]
-'''
+```
 
 ## 🛠 Usage
 Run Manually
 To execute the scraper once immediately:
 
-'''
-# Bash
+```bash
 
 uv run main.py --now
-'''
+```
 
 Start the Scheduler
 To start the script in "Waiting" mode (it will run every day at 10:00):
 
-'''
-# Bash
+```bash
 
 uv run main.py
-'''
+```
 
 Background Execution (Linux)
 To keep the scheduler running after you close your terminal:
 
-'''
-# Bash
+```bash
 
 nohup uv run main.py &
-'''
+```
 
 ## 📋 Monitoring
 The project maintains a detailed log of all activities:
