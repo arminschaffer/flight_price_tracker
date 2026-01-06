@@ -1,0 +1,13 @@
+[project]
+name = "flight-price-tracker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.3.3",
+    "schedule>=1.2.2",
+    "selenium>=4.39.0",
+    "sqlalchemy>=2.0.45",
+    "webdriver-manager>=4.0.2",
+]

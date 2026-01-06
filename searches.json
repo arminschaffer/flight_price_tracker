@@ -1,0 +1,12 @@
+[
+    {
+        "origin": "Vienna",
+        "destination": "Lisbon",
+        "earliest_departure": "2026-05-08",
+        "latest_return": "2026-05-20",
+        "min_stay_days": 7,
+        "max_stay_days": 9,
+        "max_stops": 0,
+        "max_duration_hours": 5
+    }
+]
