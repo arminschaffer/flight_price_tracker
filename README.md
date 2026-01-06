@@ -86,7 +86,7 @@ git clone https://github.com/arminschaffer/flight_price_tracker
 cd flight_price_tracker
 
 # Create empty files for volumes to prevent permission issues
-touch flights_databank.db tracker.log
+touch flight_databank.db tracker.log
 ```
 
 ### 3. Build and Run
@@ -99,7 +99,7 @@ podman build -t flight-tracker .
 podman run -d \
   --name tracker-app \
   --restart always \
-  -v $(pwd)/flights.db:/app/flights.db:Z \
+  -v $(pwd)/flight_databank.db:/app/flight_databank.db:Z \
   -v $(pwd)/tracker.log:/app/tracker.log:Z \
   -v $(pwd)/searches.json:/app/searches.json:Z \
   flight-tracker
