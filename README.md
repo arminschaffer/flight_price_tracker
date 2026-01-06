@@ -82,7 +82,7 @@ sudo apt update && sudo apt install -y podman git
 Pull the code directly onto the target device to ensure the build matches the CPU architecture:
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/arminschaffer/flight_price_tracker
 cd flight_price_tracker
 
 # Create empty files for volumes to prevent permission issues
