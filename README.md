@@ -71,7 +71,7 @@ To keep the scheduler running after you close your terminal:
 nohup uv run main.py &
 ```
 
-## Using Docker (Raspberry Pi / Linux)
+## 🦭📦 Using Docker (Raspberry Pi / Linux)
 ### 1. Prerequisites
 Ensure you have podman (or docker) and git installed on your Pi:
 ```bash
