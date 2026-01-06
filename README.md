@@ -13,27 +13,27 @@ High Performance: Optimized with uv for lightning-fast environment management an
 Database Integration: Saves all scraped data into a structured format for long-term price analysis.
 
 ## 🚀 Getting Started
-1. Prerequisites
+### 1. Prerequisites
 Ensure you have uv installed on your system:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-2. Installation
+### 2. Installation
 Clone the repository and sync the environment:
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/arminschaffer/flight_price_tracker
 cd flight_price_tracker
 ```
 
-### Create virtual environment and install dependencies
+### 3. Create virtual environment and install dependencies
 ```bash
 uv sync
 ```
 
-3. Configuration
+### 4. Configuration
 Create a searches.json file in the root directory to define the flights you want to track:
 
 ```json
@@ -54,7 +54,6 @@ Run Manually
 To execute the scraper once immediately:
 
 ```bash
-
 uv run main.py --now
 ```
 
@@ -62,7 +61,6 @@ Start the Scheduler
 To start the script in "Waiting" mode (it will run every day at 10:00):
 
 ```bash
-
 uv run main.py
 ```
 
@@ -70,8 +68,41 @@ Background Execution (Linux)
 To keep the scheduler running after you close your terminal:
 
 ```bash
-
 nohup uv run main.py &
+```
+
+## Using Docker (Raspberry Pi / Linux)
+### 1. Prerequisites
+Ensure you have podman (or docker) and git installed on your Pi:
+```bash
+sudo apt update && sudo apt install -y podman git
+```
+
+### 2. Clone and Prepare
+Pull the code directly onto the target device to ensure the build matches the CPU architecture:
+
+```bash
+git clone <your-repo-url>
+cd flight_price_tracker
+
+# Create empty files for volumes to prevent permission issues
+touch flights.db tracker.log
+```
+
+### 3. Build and Run
+Build the image locally on the Pi to ensure ARM-native Chromium is installed:
+```bash
+# Build the image
+podman build -t flight-tracker .
+
+# Run with Volume Mapping
+podman run -d \
+  --name tracker-app \
+  --restart always \
+  -v $(pwd)/flights.db:/app/flights.db:Z \
+  -v $(pwd)/tracker.log:/app/tracker.log:Z \
+  -v $(pwd)/searches.json:/app/searches.json:Z \
+  flight-tracker
 ```
 
 ## 📋 Monitoring
