@@ -66,7 +66,6 @@ def generate_google_flights_url(
 
 def scrape_google_flights(
         url: str, 
-        service: Service,
         departure_date: str,
         return_date: Optional[str],
         cheapest_flights_option: bool = True, 
@@ -82,7 +81,7 @@ def scrape_google_flights(
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
     driver.set_page_load_timeout(60)
     
     flights_data = []
@@ -210,7 +209,6 @@ def flight_data_filter(flights_data: list[dict],
 
 
 def get_flight_data(
-        service: Service,
         origin: str, 
         dest: str, 
         depature_date: str, 
@@ -224,20 +222,16 @@ def get_flight_data(
         ) -> list[dict]:
     
     url, _ = generate_google_flights_url(origin, dest, depature_date, return_date, one_way)
-    data = scrape_google_flights(url, service, depature_date, return_date, cheapest_flights_option, more_flights)
+    data = scrape_google_flights(url, depature_date, return_date, cheapest_flights_option, more_flights)
     return flight_data_filter(data, max_stops, max_duration, top_n)
 
 
 def main():
-    # SETUP SERVICE ONCE
-    logger.info("Initializing ChromeDriver Service...")
-    service = Service(ChromeDriverManager().install())
-
     # Simple test run
     # Example: Search VIE (IVienna) to LHR (London Heathrow) from 2026-01-01 to 2026-01-10
     search_url, encoded_query = generate_google_flights_url("VIE", "LHR", "2026-01-01", "2026-01-10")
 
-    data = scrape_google_flights(search_url, service, "2026-01-01", "2026-01-10", cheapest_flights_option=True, more_flights=True)
+    data = scrape_google_flights(search_url, "2026-01-01", "2026-01-10", cheapest_flights_option=True, more_flights=True)
 
     # for flight in data:
     #     print(flight)

@@ -118,9 +118,6 @@ def run_tracker():
     logger.info("=== Starting flight-price-tracker ===")
 
     try:
-        # Setup Selenium Chrome Driver
-        chrome_service = Service(ChromeDriverManager().install())
-
         # Setup DB session
         SessionLocal = Session()
 
@@ -141,7 +138,6 @@ def run_tracker():
             n_combos = 0
             for date_combo in date_combos:
                 flight_data = get_flight_data(
-                    service=chrome_service,
                     origin=search.origin,
                     dest=search.destination,
                     depature_date=date_combo["departure_date"],
@@ -178,3 +174,4 @@ if __name__ == "__main__":
     while True:
         schedule.run_pending()
         time.sleep(60) # Check every minute
+    # run_tracker()
