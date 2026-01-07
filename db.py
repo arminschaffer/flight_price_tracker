@@ -63,7 +63,7 @@ class PriceHistory(Base):
 
 
 # --- Database Setup ---
-DATABASE = "flight_databank.db"
+DATABASE = "flight_database.db"
 engine = create_engine(f'sqlite:///{DATABASE}', echo=False)
 
 # This creates the tables if they don't exist
