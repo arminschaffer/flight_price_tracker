@@ -19,7 +19,12 @@ logger = logging.getLogger("FlightPriceTracker")
 logger.setLevel(logging.INFO)
 
 # Rotate logs at 5MB, keep 3 backup files
-file_handler = RotatingFileHandler("tracker.log", maxBytes=2*1024*1024, backupCount=3)
+file_handler = RotatingFileHandler(
+    "tracker.log", 
+    maxBytes=2*1024*1024, 
+    backupCount=3,
+    delay=False
+    )
 stream_handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 

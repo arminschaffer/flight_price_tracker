@@ -81,10 +81,10 @@ def scrape_google_flights(
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-    if os.path.exists("/usr/bin/chromium"):
-        chrome_options.binary_location = "/usr/bin/chromium"
-    elif os.path.exists("/usr/bin/chromium-browser"):
-        chrome_options.binary_location = "/usr/bin/chromium-browser"
+    if os.path.exists("/usr/lib/chromium-browser/chromium-browser"):
+        chrome_options.binary_location = "/usr/lib/chromium-browser/chromium-browser"
+    elif os.path.exists("/usr/lib/chromium/chromium"):
+        chrome_options.binary_location = "/usr/lib/chromium/chromium"
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.set_page_load_timeout(60)
