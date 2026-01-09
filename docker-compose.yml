@@ -1,0 +1,18 @@
+services:
+  dashboard:
+    build: .
+    container_name: flight-price-dashboard
+    command: uv run app.py
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./flight_database.db:/app/flight_database.db:Z
+    restart: always
+
+  tracker:
+    build: .
+    container_name: flight-price-tracker
+    command: uv run main.py
+    volumes:
+      - ./flight_database.db:/app/flight_database.db:Z
+    restart: always

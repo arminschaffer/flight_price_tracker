@@ -8,5 +8,15 @@
         "max_stay_days": 9,
         "max_stops": 0,
         "max_duration_hours": 5
+    },
+    {
+        "origin": "Vienna",
+        "destination": "Sardinia",
+        "earliest_departure": "2026-09-01",
+        "latest_return": "2026-09-30",
+        "min_stay_days": 9,
+        "max_stay_days": 14,
+        "max_stops": 0,
+        "max_duration_hours": 3
     }
 ]
