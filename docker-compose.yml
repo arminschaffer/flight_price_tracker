@@ -15,4 +15,7 @@ services:
     command: uv run main.py
     volumes:
       - ./flight_database.db:/app/flight_database.db:Z
+      - ./searches.json:/app/searches.json:Z
+      - ./tracker.log:/app/tracker.log:Z
+      - ./scraper.log:/app/scraper.log:Z
     restart: always
