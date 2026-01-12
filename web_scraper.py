@@ -229,12 +229,12 @@ def get_flight_data(
         more_flights: bool = False,
         max_stops: int | None = None, 
         max_duration: dt_time | None = None,
-        top_n: int | None = None
+        top_n_z: int | None = None
         ) -> list[dict]:
     
     url, _ = generate_google_flights_url(origin, dest, depature_date, return_date, one_way)
     data = scrape_google_flights(url, depature_date, return_date, cheapest_flights_option, more_flights)
-    return flight_data_filter(data, max_stops, max_duration, top_n)
+    return flight_data_filter(data, max_stops, max_duration, top_n_z)
 
 
 def main():
