@@ -86,39 +86,40 @@ git clone https://github.com/arminschaffer/flight_price_tracker
 cd flight_price_tracker
 
 # Create empty files for volumes to prevent permission issues
-touch flight_databank.db tracker.log
+touch flight_databank.db tracker.log scraper.log
 ```
 
 ### 3. Build and Run
-Build the image locally on the Pi to ensure ARM-native Chromium is installed:
+To build the images and start the multi-container stack locally on the Pi, run:
 ```bash
-# Build the image
-podman build -t flight-tracker .
-
-# Run with Volume Mapping
-podman run -d \
-  --name tracker-app \
-  --restart always \
-  -v $(pwd)/flight_databank.db:/app/flight_databank.db:Z \
-  -v $(pwd)/tracker.log:/app/tracker.log:Z \
-  -v $(pwd)/searches.json:/app/searches.json:Z \
-  flight-tracker
+podman-compose up --build -d
 ```
+This command performs the following:
+
+- Builds the ARM-native Chromium environment for the tracker.
+
+- Orchestrates two services: the Tracker (data collection) and the Dash Web App (data visualization).
+
+- Detaches the process (-d) to run the application in the background.
 
 ## 📋 Monitoring
+The results can be viewed in a dash app by running the app.py. 
+
 The project maintains a detailed log of all activities:
 
-Terminal: Real-time progress updates.
+- Terminal: Real-time progress updates.
 
-tracker.log: A persistent record of searches and any errors (timeouts, missing elements).
+- tracker.log: A persistent record of searches and any errors (timeouts, missing elements).
 
-scraper.log: Deep-dive logs from the Selenium driver.
+- scraper.log: Deep-dive logs from the Selenium driver.
 
 ## 📂 Project Structure
-main.py: Orchestrator and Scheduler.
+- main.py: Orchestrator and Scheduler.
 
-web_scraper.py: Selenium logic and Google Flights interaction.
+- web_scraper.py: Selenium logic and Google Flights interaction.
 
-db.py: SQLAlchemy models and database configuration.
+- db.py: SQLAlchemy models and database configuration.
 
-searches.json: Your flight search configurations.
+- searches.json: Your flight search configurations.
+
+- app.py: dashboard web app.
