@@ -27,12 +27,7 @@ app.layout = html.Div(style={'fontFamily': 'Arial', 'padding': '20px', 'margin':
     # --- ROW 1: Route Dropdown (Full Width or Centered) ---
     html.Div([
         html.Label("Route:", style={'fontWeight': 'bold'}),
-        dcc.Dropdown(
-            id='route-drop', 
-            options=[{'label': f"{r.origin} to {r.destination}", 'value': f"{r.origin}|{r.destination}"} 
-                    for r in initial_df[['origin', 'destination']].drop_duplicates().itertuples()],
-            value=f"{initial_df.iloc[0]['origin']}|{initial_df.iloc[0]['destination']}"
-        )
+        dcc.Dropdown(id='route-drop')
     ], style={'width': '100%', 'marginBottom': '20px'}),
 
     # --- ROW 2: Checklist + Date Dropdown (Side-by-Side) ---
@@ -125,7 +120,21 @@ def update_scatter(selected_route, selected_metrics, n):
 
     return fig
 
-    return fig
+
+# Callback to update Route Dropdown options periodically
+@app.callback(
+    Output('route-drop', 'options'),
+    Input('interval-component', 'n_intervals')
+)
+def update_route_options(n):
+    df = get_data()
+    # Create new options list from the latest database state
+    options = [
+        {'label': f"{r.origin} to {r.destination}", 'value': f"{r.origin}|{r.destination}"} 
+        for r in df[['origin', 'destination']].drop_duplicates().itertuples()
+    ]
+    return options
+
 
 # Callback to update Date Dropdown based on Route
 @app.callback(
@@ -134,6 +143,9 @@ def update_scatter(selected_route, selected_metrics, n):
     Input('route-drop', 'value')
 )
 def update_date_options(selected_route):
+    if selected_route is None:
+        return [], None
+    
     origin, dest = selected_route.split('|')
     # Use the live data to find available dates for THIS specific route
     df = get_data()
