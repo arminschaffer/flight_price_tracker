@@ -15,9 +15,6 @@ def get_data():
     df = pd.read_sql(query, con=engine)
     return df.loc[:,~df.columns.duplicated()].copy()
 
-# Initial load for dropdown options
-initial_df = get_data()
-
 # App Setup
 app = dash.Dash(__name__)
 
@@ -64,7 +61,28 @@ app.layout = html.Div(style={'fontFamily': 'Arial', 'padding': '20px', 'margin':
         ], style={'width': '49%'})
     ], style={'display': 'flex', 'justifyContent': 'space-between'}),
 
-    dcc.Interval(id='interval-component', interval=30*60*1000, n_intervals=0)
+    dcc.Interval(id='interval-component', interval=30*60*1000, n_intervals=0),
+
+    # --- ROW 4: Drop downs for departure and return ---
+    html.Div([
+        # Left Side: Checklist
+        html.Div([
+            html.Label("Departure date:", style={'fontWeight': 'bold'}),
+            dcc.Dropdown(id='departure-drop')
+        ], style={'width': '49%'}),
+
+        # Right Side: Scrape Date
+        html.Div([
+            html.Label("Return date:", style={'fontWeight': 'bold'}),
+            dcc.Dropdown(id='return-drop')
+        ], style={'width': '49%'})
+    ], style={'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'flex-end', 'marginBottom': '0px'}),
+
+    # --- ROW 5: Table of all flights fitting connection ---
+    html.Div([
+        html.H3("Available Offers"),
+        dcc.Graph(id='flights-table')
+    ], style={'padding': '20px 0'})
 ])
 
 
@@ -143,8 +161,7 @@ def update_route_options(n):
     Input('route-drop', 'value')
 )
 def update_date_options(selected_route):
-    if selected_route is None:
-        return [], None
+    if not selected_route: return [], None
     
     origin, dest = selected_route.split('|')
     # Use the live data to find available dates for THIS specific route
@@ -250,6 +267,125 @@ def update_heatmap(selected_route, selected_date, n):
         yaxis={'tickformat': '%d %b', 'dtick': 'D1', 'showgrid': False},
         margin=dict(t=30, b=30, l=30, r=30)
     )
+    return fig
+
+
+# Callback to update Departure Dropdown options
+@app.callback(
+    Output('departure-drop', 'options'),
+    Output('departure-drop', 'value'),
+    Input('route-drop', 'value'),
+    Input('date-drop', 'value')
+)
+def update_departure_options(selected_route, scrape_date):
+    if not selected_route: return [], None
+    
+    origin, dest = selected_route.split('|')
+    scrape_date = scrape_date
+    # Use the live data to find available dates for THIS specific route
+    df = get_data()
+
+    mask = (
+        (df['origin'] == origin) & 
+        (df['destination'] == dest) & 
+        (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
+    )
+
+    relevant_flights = sorted(
+        pd.to_datetime(
+            df[mask]['departure_date']).dt.date.unique(), reverse=True)
+
+    options = [
+        {'label': d.strftime('%d %b %Y'), 'value': str(d)} for d in relevant_flights
+        ]
+    return options, options[0]['value'] if options else None
+
+
+# Callback to update Return Dropdown options
+@app.callback(
+    Output('return-drop', 'options'),
+    Output('return-drop', 'value'),
+    Input('route-drop', 'value'),
+    Input('date-drop', 'value')
+)
+def update_return_options(selected_route, scrape_date):
+    if not selected_route: return [], None
+    
+    origin, dest = selected_route.split('|')
+    scrape_date = scrape_date
+    # Use the live data to find available dates for THIS specific route
+    df = get_data()
+    relevant_flights = sorted(
+        pd.to_datetime(
+            df[
+                (df['origin'] == origin) & 
+                (df['destination'] == dest) & 
+                (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
+            ]['return_date']).dt.date.unique(), reverse=True)
+
+    options = [
+        {'label': d.strftime('%d %b %Y'), 'value': str(d)} for d in relevant_flights
+        ]
+    return options, options[0]['value'] if options else None
+
+
+# Callback to update the Table (id='flights-table')
+@app.callback(
+    Output('flights-table', 'figure'),
+    Input('route-drop', 'value'),
+    Input('date-drop', 'value'),
+    Input('departure-drop', 'value'),
+    Input('return-drop', 'value'),
+    Input('interval-component', 'n_intervals')
+)
+def update_table(selected_route, scrape_date, dep_date, ret_date, n):
+    if not all([selected_route, scrape_date, dep_date, ret_date]):
+        return go.Figure()
+
+    origin, dest = selected_route.split('|')
+    df = get_data()
+
+    # Filter data based on all selections
+    mask = (
+        (df['origin'] == origin) & 
+        (df['destination'] == dest) & 
+        (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date) &
+        (pd.to_datetime(df['departure_date']).dt.date.astype(str) == dep_date) &
+        (pd.to_datetime(df['return_date']).dt.date.astype(str) == ret_date)
+    )
+    
+    table_df = df[mask].copy()
+    
+    # Sort by price ascending
+    table_df = table_df.sort_values(by='price', ascending=True)
+
+    # Create the Plotly Table
+    fig = go.Figure(data=[go.Table(
+        header=dict(
+            values=['<b>Airline</b>', '<b>Departure</b>', '<b>Return</b>', '<b>Stops</b>', '<b>Duration</b>', '<b>Price</b>'],
+            align='left',
+            font=dict(size=12)
+        ),
+        cells=dict(
+            values=[
+                table_df.airline, 
+                table_df.departure_date, 
+                table_df.return_date,
+                table_df.stops, 
+                table_df.duration, 
+                table_df.price.map('€{:,.2f}'.format)
+            ],
+            fill_color='lavender',
+            align='left',
+            font=dict(size=11)
+        ))
+    ])
+
+    fig.update_layout(
+        margin=dict(t=10, b=10, l=10, r=10),
+        height=400
+    )
+
     return fig
 
 
