@@ -86,7 +86,7 @@ git clone https://github.com/arminschaffer/flight_price_tracker
 cd flight_price_tracker
 
 # Create empty files for volumes to prevent permission issues
-touch flight_databank.db tracker.log scraper.log
+touch flight_databank.db searches.json tracker.log scraper.log
 ```
 
 ### 3. Build and Run
