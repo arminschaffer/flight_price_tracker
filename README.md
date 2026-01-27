@@ -34,7 +34,7 @@ uv sync
 ```
 
 ### 4. Configuration
-Create a searches.json file in the root directory to define the flights you want to track:
+Create a searches.json file in the root directory to define the flights you want to track (e.g. searches_examples.json):
 
 ```json
 [
