@@ -175,9 +175,13 @@ def run_tracker():
 schedule.every().day.at("10:00").do(run_tracker)
 
 if __name__ == "__main__":
-    # logger.info("Scheduler active. Waiting...")
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(60) # Check every minute
-    logger.info("Run price tracker once...")
-    run_tracker()
+    RUN_MODE_SCHEDULED = False  # Change to True to enable scheduling
+
+    if RUN_MODE_SCHEDULED:
+        logger.info("Scheduler active. Waiting...")
+        while True:
+            schedule.run_pending()
+            time.sleep(60) # Check every minute
+    else:
+        logger.info("Run price tracker once...")
+        run_tracker()

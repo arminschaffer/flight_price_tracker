@@ -109,7 +109,7 @@ def scrape_google_flights(
             reject_btn.click()
             logger.info("Consent screen cleared.")
         except Exception:
-            pass # Already cleared or didn't appear
+            logger.warning("Could not clear consent screen.")
 
         # B. POP-UP KILLER (Recommended Flights / Tips)
         try:
@@ -141,7 +141,7 @@ def scrape_google_flights(
                     view_more[0].click()
                     time.sleep(2)
             except Exception:
-                pass
+                logger.warning("Could not click 'View More' button.")
 
         # E. DATA EXTRACTION
         flight_elements = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.pIav2d")))
@@ -168,7 +168,7 @@ def scrape_google_flights(
                     "scraped_at": pd.Timestamp.now()
                 })
             except Exception:
-                continue 
+                logger.warning("Failed to parse a flight entry, skipping.")
 
         logger.info(f"Found {len(flights_data)} flights.")
         return flights_data
