@@ -145,7 +145,7 @@ def run_tracker():
                 flight_data = get_flight_data(
                     origin=search.origin,
                     dest=search.destination,
-                    depature_date=date_combo["departure_date"],
+                    departure_date=date_combo["departure_date"],
                     return_date=date_combo["return_date"],
                     one_way=False,
                     cheapest_flights_option=True,

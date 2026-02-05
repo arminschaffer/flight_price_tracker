@@ -34,7 +34,7 @@ logger.addHandler(stream_handler)
 def generate_google_flights_url(
         origin: str, 
         dest: str, 
-        depature_date: str, 
+        departure_date: str, 
         return_date: str | None, 
         one_way: bool = False
         ) -> tuple[str, str]:
@@ -45,8 +45,8 @@ def generate_google_flights_url(
     :type origin: str
     :param dest: Airport code of destination or city name (e.g. LHR for London Heathrow, or London)
     :type dest: str
-    :param depature_date: Departure date
-    :type depature_date: date
+    :param departure_date: Departure date
+    :type departure_date: date
     :param return_date: Return date
     :type return_date: date | None
     :param one_way: one way trip if True, defaults to False
@@ -55,9 +55,9 @@ def generate_google_flights_url(
     """
 
     if one_way or return_date is None:
-        query = f"Flights to {dest} from {origin} on {depature_date} oneway"
+        query = f"Flights to {dest} from {origin} on {departure_date} oneway"
     else:
-        query = f"Flights to {dest} from {origin} on {depature_date} return {return_date}"
+        query = f"Flights to {dest} from {origin} on {departure_date} return {return_date}"
     
     # URL encode the spaces to %20
     encoded_query = query.replace(" ", "%20")
@@ -219,13 +219,17 @@ def flight_data_filter(flights_data: list[dict],
     return filtered_data[:top_n] if top_n is not None else filtered_data
 
 
-def scrape_google_flights_with_retry(url, departure_date, return_date=None, max_retries=3):
+def scrape_google_flights_with_retry(
+        url, departure_date, return_date=None, cheapest_flights_option=True, more_flights=False, max_retries=3
+        ):
     """
     Wraps the scraper with a retry loop.
     """
     for attempt in range(max_retries):
         try:
-            result = scrape_google_flights(url, departure_date, return_date)
+            result = scrape_google_flights(
+                url, departure_date, return_date, cheapest_flights_option, more_flights
+                )
             
             if result:
                 return result
@@ -247,7 +251,7 @@ def scrape_google_flights_with_retry(url, departure_date, return_date=None, max_
 def get_flight_data(
         origin: str, 
         dest: str, 
-        depature_date: str, 
+        departure_date: str, 
         return_date: str | None, 
         one_way: bool = False,
         cheapest_flights_option: bool = False,
@@ -257,8 +261,10 @@ def get_flight_data(
         top_n: int | None = None
         ) -> list[dict]:
     
-    url, _ = generate_google_flights_url(origin, dest, depature_date, return_date, one_way)
-    data = scrape_google_flights(url, depature_date, return_date, cheapest_flights_option, more_flights)
+    url, _ = generate_google_flights_url(origin, dest, departure_date, return_date, one_way)
+    data = scrape_google_flights_with_retry(
+        url, departure_date, return_date, cheapest_flights_option, more_flights
+        )
     return flight_data_filter(data, max_stops, max_duration, top_n)
 
 
@@ -278,7 +284,7 @@ def main():
     # for flight in filtered_flights:
     #     print(flight)
 
-    # 4. Save to CSV for your Databank
+    # 4. Save to CSV for your data base
     if filtered_flights:
         df = pd.DataFrame(filtered_flights)
         df.to_csv(f"flight_prices_{encoded_query}.csv", mode='a', index=False, header=not os.path.isfile(f"flight_prices_{encoded_query}.csv"))
