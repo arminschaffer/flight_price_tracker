@@ -219,6 +219,31 @@ def flight_data_filter(flights_data: list[dict],
     return filtered_data[:top_n] if top_n is not None else filtered_data
 
 
+def scrape_google_flights_with_retry(url, departure_date, return_date=None, max_retries=3):
+    """
+    Wraps the scraper with a retry loop.
+    """
+    for attempt in range(max_retries):
+        try:
+            result = scrape_google_flights(url, departure_date, return_date)
+            
+            if result:
+                return result
+            
+            logger.warning(f"Attempt {attempt + 1}: No flights found. Retrying...")
+            
+        except Exception as e:
+            logger.error(f"Attempt {attempt + 1} failed with error: {e}")
+        
+        wait_time = (attempt + 1) * 10  # exponential waiting (10, 20, 30)
+        if attempt < max_retries - 1:
+            logger.info(f"Waiting {wait_time}s before next attempt...")
+            time.sleep(wait_time)
+            
+    logger.error(f"All {max_retries} attempts failed.")
+    return []
+
+
 def get_flight_data(
         origin: str, 
         dest: str, 
