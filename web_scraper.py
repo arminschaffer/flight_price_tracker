@@ -82,16 +82,19 @@ def scrape_google_flights(
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
     # --- CROSS-PLATFORM PATH DETECTION ---
-    pi_browser_path = "/usr/bin/chromium"
+    pi_browser_path = "/usr/bin/chromium-browser" # Often chromium-browser on Pi, not just chromium
     pi_driver_path = "/usr/bin/chromedriver"
 
-    # If we are on the Raspberry Pi (Linux + specific path exists)
     if os.path.exists(pi_browser_path):
+        logger.info("Running on Raspberry Pi / Linux with manual paths")
         chrome_options.binary_location = pi_browser_path
+        # Use the specific Service object for the manual path
         driver_service = Service(executable_path=pi_driver_path)
         driver = webdriver.Chrome(service=driver_service, options=chrome_options)
     else:
-        driver = webdriver.Chrome(options=chrome_options)
+        logger.info("Running on local machine with webdriver-manager")
+        # Use ChromeDriverManager for Windows/Mac/Standard Linux
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
         
     driver.set_page_load_timeout(60)
     
