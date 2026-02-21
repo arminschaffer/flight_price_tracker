@@ -18,4 +18,4 @@ services:
       - ./searches.json:/app/searches.json:Z
       - ./tracker.log:/app/tracker.log:Z
       - ./scraper.log:/app/scraper.log:Z
-    restart: always
+    restart: on-failure
