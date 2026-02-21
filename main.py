@@ -142,6 +142,12 @@ def run_tracker():
 
             n_combos = 0
             for date_combo in date_combos:
+                dep_date_obj = datetime.strptime(date_combo["departure_date"], "%Y-%m-%d").date()
+
+                if dep_date_obj < datetime.now():
+                    logger.info(f"Skipping date combo. Departure date {date_combo['departure_date']} is in the past.")
+                    continue
+
                 flight_data = get_flight_data(
                     origin=search.origin,
                     dest=search.destination,
