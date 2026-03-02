@@ -144,7 +144,7 @@ def run_tracker():
             for date_combo in date_combos:
                 dep_date_obj = datetime.strptime(date_combo["departure_date"], "%Y-%m-%d").date()
 
-                if dep_date_obj < datetime.now():
+                if dep_date_obj < datetime.now().date():
                     logger.info(f"Skipping date combo. Departure date {date_combo['departure_date']} is in the past.")
                     continue
 
