@@ -16,5 +16,9 @@ wheels/
 # log files
 *.log
 
+# credentials & tokens
+credentials.json
+token.json
+
 # operational searches file
 searches.json

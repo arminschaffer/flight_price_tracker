@@ -5,6 +5,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from datetime import date, time as dt_time
 from typing import List, Dict, Optional, Tuple
+import shutil
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -82,13 +83,13 @@ def scrape_google_flights(
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
     # --- CROSS-PLATFORM PATH DETECTION ---
-    pi_browser_path = "/usr/bin/chromium"
-    pi_driver_path = "/usr/bin/chromedriver"
+    exe_path = shutil.which("chromium") or shutil.which("chromium-browser")
+    driver_path = shutil.which("chromedriver")
 
     # If we are on the Raspberry Pi (Linux + specific path exists)
-    if os.path.exists(pi_browser_path):
-        chrome_options.binary_location = pi_browser_path
-        driver_service = Service(executable_path=pi_driver_path)
+    if exe_path and driver_path:
+        chrome_options.binary_location = exe_path
+        driver_service = Service(executable_path=driver_path)
         driver = webdriver.Chrome(service=driver_service, options=chrome_options)
     else:
         driver = webdriver.Chrome(options=chrome_options)
@@ -234,7 +235,8 @@ def scrape_google_flights_with_retry(
             if result:
                 return result
             
-            logger.warning(f"Attempt {attempt + 1}: No flights found. Retrying...")
+            else:
+                logger.warning(f"Attempt {attempt + 1}: No flights found. Retrying...")
             
         except Exception as e:
             logger.error(f"Attempt {attempt + 1} failed with error: {e}")

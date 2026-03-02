@@ -1,10 +1,10 @@
 # Use a lightweight Python base
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install Chromium and Driver (specific to ARM/Pi architecture)
 RUN apt-get update && apt-get install -y \
-    chromium \
-    chromium-driver \
+    chromium-browser \
+    chromium-chromedriver \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast dependency management
@@ -20,5 +20,5 @@ RUN uv sync --frozen --no-install-project
 COPY . .
 
 # Environment variables for Selenium to find Chromium on Linux
-ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROME_BIN=/usr/bin/chromium-browser
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
