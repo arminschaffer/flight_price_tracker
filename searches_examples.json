@@ -10,13 +10,13 @@
         "max_duration_hours": 5
     },
     {
-        "origin": "Vienna",
-        "destination": "Agadir",
-        "earliest_departure": "2026-02-14",
-        "latest_return": "2026-02-23",
-        "min_stay_days": 9,
-        "max_stay_days": 9,
+        "origin": "Stockholm",
+        "destination": "Vienna",
+        "earliest_departure": "2026-05-17",
+        "latest_return": "",
+        "min_stay_days": 1,
+        "max_stay_days": 1,
         "max_stops": 0,
-        "max_duration_hours": 5
+        "max_duration_hours": 4
     }
 ]

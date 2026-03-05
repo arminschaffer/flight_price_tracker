@@ -140,11 +140,6 @@ def run_tracker():
                 search.max_stay_days
             )
 
-            if not search.latest_return:
-                one_way_option = True
-            else:
-                one_way_option = False
-
             n_combos = 0
             for date_combo in date_combos:
                 dep_date_obj = datetime.strptime(date_combo["departure_date"], "%Y-%m-%d").date()
@@ -158,7 +153,7 @@ def run_tracker():
                     dest=search.destination,
                     departure_date=date_combo["departure_date"],
                     return_date=date_combo["return_date"],
-                    one_way=one_way_option,
+                    one_way=False,
                     cheapest_flights_option=True,
                     more_flights=False,
                     max_stops=search.max_stops,
