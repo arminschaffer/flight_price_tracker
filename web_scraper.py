@@ -7,9 +7,10 @@ from datetime import date, time as dt_time
 from typing import List, Dict, Optional, Tuple
 import shutil
 
-from selenium import webdriver
+from selenium import webdriver 
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.webdriver import WebDriver as Chrome
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -90,9 +91,9 @@ def scrape_google_flights(
     if exe_path and driver_path:
         chrome_options.binary_location = exe_path
         driver_service = Service(executable_path=driver_path)
-        driver = webdriver.Chrome(service=driver_service, options=chrome_options)
+        driver = Chrome(service=driver_service, options=chrome_options)
     else:
-        driver = webdriver.Chrome(options=chrome_options)
+        driver = Chrome(options=chrome_options)
         
     driver.set_page_load_timeout(60)
     
@@ -205,10 +206,9 @@ def flight_data_filter(flights_data: list[dict],
             try:
                 hours, minutes = 0, 0
                 if 'h' in duration_str:
-                    hours = int(duration_str.split(' ')[0].strip())
-                    duration_str = duration_str.split('hr ')[1].strip()
+                    hours = int(duration_str.split()[0].split('h')[0])
                 if 'm' in duration_str:
-                    minutes = int(duration_str.split(' ')[0].strip())
+                    minutes = int(duration_str.split()[1].split('m')[0])
                 total_duration = dt_time(hour=hours, minute=minutes)
                 if total_duration > max_duration:
                     continue

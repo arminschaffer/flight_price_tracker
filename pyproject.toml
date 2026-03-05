@@ -3,14 +3,12 @@ name = "flight-price-tracker"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "dash>=3.3.0",
-    "google-api-python-client>=2.190.0",
-    "google-auth-httplib2>=0.3.0",
-    "google-auth-oauthlib>=1.2.4",
     "pandas>=2.3.3",
     "plotly>=6.5.1",
+    "pytest>=9.0.2",
     "schedule>=1.2.2",
     "selenium>=4.39.0",
     "sqlalchemy>=2.0.45",
