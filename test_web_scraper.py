@@ -26,14 +26,14 @@ def test_flight_data_filter_stops():
 def test_flight_data_filter_duration():
     """Test that the filter handles flight duration limits."""
     mock_data = [
-        {"stops": 0, "duration": "1hr 30m", "price": 100},
-        {"stops": 0, "duration": "10hr 0m", "price": 200},
+        {"stops": 0, "duration": "1 hr 30 min", "price": 100},
+        {"stops": 0, "duration": "10 hr 0 min", "price": 200},
     ]
     # Filter for max 5 hours
     limit = dt_time(hour=5, minute=0)
     filtered = flight_data_filter(mock_data, max_duration=limit)
     assert len(filtered) == 1
-    assert "1hr 30m" in filtered[0]["duration"]
+    assert "1 hr 30 min" in filtered[0]["duration"]
 
 ## --- INTEGRATION TEST (slow) ---
 

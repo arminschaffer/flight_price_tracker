@@ -206,9 +206,10 @@ def flight_data_filter(flights_data: list[dict],
             try:
                 hours, minutes = 0, 0
                 if 'h' in duration_str:
-                    hours = int(duration_str.split()[0].split('h')[0])
+                    hours = int(duration_str.split()[0].strip())
+                    duration_str = duration_str.split('hr ')[1].strip()
                 if 'm' in duration_str:
-                    minutes = int(duration_str.split()[1].split('m')[0])
+                    minutes = int(duration_str.split()[0].strip())
                 total_duration = dt_time(hour=hours, minute=minutes)
                 if total_duration > max_duration:
                     continue
