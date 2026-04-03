@@ -178,12 +178,16 @@ def run_tracker():
         
 
 # Schedule the task
-schedule.every().day.at("10:00").do(run_tracker)
+schedule_time = "10:00"
+schedule.every().day.at(schedule_time).do(run_tracker)
 
 if __name__ == "__main__":
-    RUN_MODE_SCHEDULED = False  # Change to True to enable scheduling
+    RUN_MODE_SCHEDULED = True  # Change to True to enable scheduling
 
     if RUN_MODE_SCHEDULED:
+        if datetime.now().time() > datetime.strptime(schedule_time, "%H:%M").time():
+            logger.info(f"Scheduled time {schedule_time} has already passed today. Running tracker immediately before scheduling.")
+            run_tracker()
         logger.info("Scheduler active. Waiting...")
         while True:
             schedule.run_pending()
