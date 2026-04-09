@@ -5,32 +5,33 @@ from typing import List, Optional
 from sqlalchemy import String, Integer, DateTime, ForeignKey, UniqueConstraint, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
-# 1. Modern Declarative Base
+
 class Base(DeclarativeBase):
     pass
 
-class Search(Base):
+
+class SearchDB(Base):
     __tablename__ = 'searches'
-    
+
     # Mapped[type] explicitly tells your IDE/type-checker the Python type
     id: Mapped[int] = mapped_column(primary_key=True)
     origin: Mapped[str] = mapped_column(String(100), nullable=False)
     destination: Mapped[str] = mapped_column(String(100), nullable=False)
-    
+
     # Range parameters
     earliest_departure: Mapped[str] = mapped_column(String(10), nullable=False)
     latest_return: Mapped[str] = mapped_column(String(10), nullable=False)
-    
+
     min_stay_days: Mapped[int] = mapped_column(Integer, default=7)
     max_stay_days: Mapped[int] = mapped_column(Integer, default=14)
     max_stops: Mapped[int] = mapped_column(Integer, default=0)
     max_duration_hours: Mapped[int] = mapped_column(Integer, default=12)
-    
+
     # Note: datetime.now is passed as a function (no parentheses)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     # Link to the results (List of PriceHistory objects)
-    prices: Mapped[List["PriceHistory"]] = relationship(
+    prices: Mapped[List["FlightDB"]] = relationship(
         "PriceHistory", back_populates="search", cascade="all, delete-orphan"
     )
 
@@ -43,12 +44,13 @@ class Search(Base):
         ),
     )
 
-class PriceHistory(Base):
+
+class FlightDB(Base):
     __tablename__ = 'price_history'
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
     search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'))
-    
+
     # Specifics of the actual flight found
     price: Mapped[int] = mapped_column(Integer, nullable=False)
     departure_date: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -59,7 +61,7 @@ class PriceHistory(Base):
     scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     # Relationship back to the parent search
-    search: Mapped["Search"] = relationship("Search", back_populates="prices")
+    search: Mapped["SearchDB"] = relationship("Search", back_populates="prices")
 
 
 # --- Database Setup ---

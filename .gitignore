@@ -17,6 +17,7 @@ wheels/
 *.log
 
 # credentials & tokens
+google_key.json
 credentials.json
 token.json
 
