@@ -32,12 +32,12 @@ class SearchDB(Base):
 
     # Link to the results (List of PriceHistory objects)
     prices: Mapped[List["FlightDB"]] = relationship(
-        "PriceHistory", back_populates="search", cascade="all, delete-orphan"
+        "FlightDB", back_populates="search", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
         UniqueConstraint(
-            'origin', 'destination', 'earliest_departure', 
+            'origin', 'destination', 'earliest_departure',
             'latest_return', 'min_stay_days', 'max_stay_days',
             'max_stops', 'max_duration_hours',
             name='_search_params_uc'
@@ -54,14 +54,14 @@ class FlightDB(Base):
     # Specifics of the actual flight found
     price: Mapped[int] = mapped_column(Integer, nullable=False)
     departure_date: Mapped[str] = mapped_column(String(10), nullable=False)
-    return_date: Mapped[Optional[str]] = mapped_column(String(10)) 
+    return_date: Mapped[Optional[str]] = mapped_column(String(10))
     airline: Mapped[Optional[str]] = mapped_column(String(512))
     stops: Mapped[Optional[int]] = mapped_column(Integer)
     duration: Mapped[Optional[str]] = mapped_column(String)
     scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     # Relationship back to the parent search
-    search: Mapped["SearchDB"] = relationship("Search", back_populates="prices")
+    search: Mapped["SearchDB"] = relationship("SearchDB", back_populates="prices")
 
 
 # --- Database Setup ---

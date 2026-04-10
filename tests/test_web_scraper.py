@@ -5,7 +5,7 @@ from schemas import ConnectionSchema, FlightSchema
 
 
 @pytest.fixture
-def mock_flight() -> list[FlightSchema]:
+def mock_flights() -> list[FlightSchema]:
     return [
         # good flight
         FlightSchema(
@@ -80,9 +80,9 @@ def test_generate_url_one_way(mock_connection: ConnectionSchema):
     assert url.startswith("http")
 
 
-def test_flight_data_filter(mock_flight: list[FlightSchema], mock_connection: ConnectionSchema):
+def test_flight_data_filter(mock_flights: list[FlightSchema], mock_connection: ConnectionSchema):
     """Test that the filter correctly removes flights with too many stops."""
-    filtered = flight_data_filter(mock_flight, mock_connection)
+    filtered = flight_data_filter(mock_flights, mock_connection)
     assert len(filtered) == 1
     assert filtered[0].stops == 0
     assert filtered[0].duration == "2 hr 0 min"

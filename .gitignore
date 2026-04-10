@@ -6,6 +6,9 @@ dist/
 wheels/
 *.egg-info
 
+# env files
+.env
+
 # Virtual environments
 .venv
 
@@ -17,7 +20,7 @@ wheels/
 *.log
 
 # credentials & tokens
-google_key.json
+google_credentials.json
 credentials.json
 token.json
 

@@ -1,8 +1,6 @@
 import os
 import time
 import pandas as pd
-import logging
-from logging.handlers import RotatingFileHandler
 from datetime import time as dt_time
 from typing import List
 import shutil
@@ -16,22 +14,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from schemas import ConnectionSchema, FlightSchema
+from logger import logger_setup
 
 
-# --- 1. LOGGING SETUP ---
-logger = logging.getLogger("FlightScraper")
-logger.setLevel(logging.INFO)
-
-# Rotate logs at 5MB, keep 3 backup files
-file_handler = RotatingFileHandler(
-    "scraper.log", maxBytes=2*1024*1024, backupCount=3)
-stream_handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-
-file_handler.setFormatter(formatter)
-stream_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.addHandler(stream_handler)
+logger = logger_setup("scraper.log")
 
 
 def generate_google_flights_url(
@@ -291,7 +277,7 @@ def main():
     # for flight in filtered_flights:
     #     print(flight)
 
-    # 4. Save to CSV for your data base
+    # Save to CSV for your data base
     if filtered_flights:
         df = pd.DataFrame(filtered_flights)
         df.to_csv(f"flight_prices_{encoded_query}.csv", mode='a', index=False,
