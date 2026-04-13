@@ -13,6 +13,8 @@ class SearchSchema(BaseModel):
     max_stay_days: int = 14
     max_stops: int = 0
     max_duration_hours: int = 12
+    created_at: datetime = Field(default_factory=datetime.now)
+    created_by: str = "admin"
 
 
 class ConnectionSchema(BaseModel):

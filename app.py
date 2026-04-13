@@ -29,12 +29,12 @@ def get_data(include_archived=True):
     # Fetch data from SQL
     query = 'SELECT * FROM searches INNER JOIN price_history ON searches.id = price_history.search_id'
     df = pd.read_sql(query, con=engine)
-    df = df.loc[:,~df.columns.duplicated()].copy()
+    df = df.loc[:, ~df.columns.duplicated()].copy()
 
     df = mark_archived(df)
 
     if not include_archived:
-        df = df[df['archived'] == False]
+        df = df[~df['archived']]
 
     return df
 
@@ -124,13 +124,14 @@ app.layout = html.Div(style={'fontFamily': 'Arial', 'padding': '20px', 'margin':
 @app.callback(
     Output('lowest-price-line', 'figure'),
     Input('route-drop', 'value'),
-    Input('price-mode', 'value'), # This is now a LIST
+    Input('price-mode', 'value'),
     Input('archive-toggle', 'value'),
     Input('interval-component', 'n_intervals')
 )
 def update_scatter(selected_route, selected_metrics, archived_flag, n):
-    if not selected_route: return go.Figure()
-    
+    if not selected_route:
+        return go.Figure()
+
     origin, dest = selected_route.split('|')
     df = get_data(archived_flag)
 
@@ -146,7 +147,7 @@ def update_scatter(selected_route, selected_metrics, archived_flag, n):
         fig.add_trace(go.Scatter(
             x=df_min.index, y=df_min.values,
             name='Min Price',
-            line=dict(color='#2ca02c', width=3), # Clean green
+            line=dict(color='#2ca02c', width=3),
             mode='lines+markers'
         ))
 
@@ -156,7 +157,7 @@ def update_scatter(selected_route, selected_metrics, archived_flag, n):
         fig.add_trace(go.Scatter(
             x=df_mean.index, y=df_mean.values,
             name='Avg Price',
-            line=dict(color='#1f77b4', width=3, dash='dash'), # Dotted blue
+            line=dict(color='#1f77b4', width=3, dash='dash'),
             mode='lines+markers'
         ))
 
@@ -184,7 +185,7 @@ def update_route_options(archived_flag, n):
     df = get_data(archived_flag)
     # Create new options list from the latest database state
     options = [
-        {'label': f"{r.origin} to {r.destination}", 'value': f"{r.origin}|{r.destination}"} 
+        {'label': f"{r.origin} to {r.destination}", 'value': f"{r.origin}|{r.destination}"}
         for r in df[['origin', 'destination']].drop_duplicates().itertuples()
     ]
     return options
@@ -198,16 +199,21 @@ def update_route_options(archived_flag, n):
     Input('archive-toggle', 'value')
 )
 def update_date_options(selected_route, archived_flag):
-    if not selected_route: return [], None
-    
+    if not selected_route:
+        return [], None
+
     origin, dest = selected_route.split('|')
     # Use the live data to find available dates for THIS specific route
     df = get_data(archived_flag)
-    relevant_dates = sorted(pd.to_datetime(df[(df['origin'] == origin) & (df['destination'] == dest)]['scraped_at']).dt.date.unique(), reverse=True)
-    
+    relevant_dates = sorted(
+        pd.to_datetime(
+            df[(df['origin'] == origin) & (df['destination'] == dest)]['scraped_at']
+            ).dt.date.unique(), reverse=True
+            )
+
     options = [
-        {'label': d.strftime('%d %b %Y') + ' (latest)', 'value': str(d)} if d == relevant_dates[0] 
-        else {'label': d.strftime('%d %b %Y'), 'value': str(d)} 
+        {'label': d.strftime('%d %b %Y') + ' (latest)', 'value': str(d)} if d == relevant_dates[0]
+        else {'label': d.strftime('%d %b %Y'), 'value': str(d)}
         for d in relevant_dates
         ]
     return options, options[0]['value'] if options else None
@@ -219,49 +225,50 @@ def update_date_options(selected_route, archived_flag):
     Input('route-drop', 'value'),
     Input('date-drop', 'value'),
     Input('archive-toggle', 'value'),
-    Input('interval-component', 'n_intervals') # Refresh when interval triggers
+    Input('interval-component', 'n_intervals')
 )
 def update_heatmap(selected_route, selected_date, archived_flag, n):
-    if not selected_date: return go.Figure()
-    
+    if not selected_date:
+        return go.Figure()
+
     origin, dest = selected_route.split('|')
     df = get_data(archived_flag)
-    
+
     mask = (df['origin'] == origin) & \
            (df['destination'] == dest) & \
            (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == selected_date)
-    
+
     # Filter the data
     filtered_df = df[mask].copy()
     filtered_df['departure_date'] = pd.to_datetime(filtered_df['departure_date'])
     filtered_df['return_date'] = pd.to_datetime(filtered_df['return_date'])
-    
-    # create df for stay length 
+
+    # create df for stay length
     filtered_df['days_stayed'] = (filtered_df['return_date'] - filtered_df['departure_date']).dt.days
     stay_df = filtered_df.pivot_table(
-        index='departure_date', 
-        columns='return_date', 
-        values='days_stayed', 
+        index='departure_date',
+        columns='return_date',
+        values='days_stayed',
         aggfunc='first'
         )
-    
+
     # create an airline df
     airline_df = filtered_df.sort_values('price').pivot_table(
-        index='departure_date', 
+        index='departure_date',
         columns='return_date',
-        values='airline', 
+        values='airline',
         aggfunc='first'
         )
-    
+
     # Convert columns to date-only
     filtered_df['departure_date'] = pd.to_datetime(filtered_df['departure_date']).dt.date
     filtered_df['return_date'] = pd.to_datetime(filtered_df['return_date']).dt.date
 
     # Pivot
     z_df = filtered_df.pivot_table(
-        index='departure_date', 
-        columns='return_date', 
-        values='price', 
+        index='departure_date',
+        columns='return_date',
+        values='price',
         aggfunc='min'
         )
 
@@ -296,11 +303,11 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
             ),
         xgap=5, ygap=5
     ))
-    
+
     fig.update_layout(
         xaxis_title="Return Date",
         yaxis_title="Departure Date",
-        plot_bgcolor='#f2f2f2', # Light grey
+        plot_bgcolor='#f2f2f2',
         xaxis={'tickformat': '%d %b', 'dtick': 'D1', 'showgrid': False, 'tickangle': -45},
         yaxis={'tickformat': '%d %b', 'dtick': 'D1', 'showgrid': False},
         margin=dict(t=30, b=30, l=30, r=30)
@@ -317,16 +324,17 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
     Input('archive-toggle', 'value')
 )
 def update_departure_options(selected_route, scrape_date, archived_flag):
-    if not selected_route: return [], None
-    
+    if not selected_route:
+        return [], None
+
     origin, dest = selected_route.split('|')
     scrape_date = scrape_date
     # Use the live data to find available dates for THIS specific route
     df = get_data(archived_flag)
 
     mask = (
-        (df['origin'] == origin) & 
-        (df['destination'] == dest) & 
+        (df['origin'] == origin) &
+        (df['destination'] == dest) &
         (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
     )
 
@@ -349,8 +357,9 @@ def update_departure_options(selected_route, scrape_date, archived_flag):
     Input('archive-toggle', 'value')
 )
 def update_return_options(selected_route, scrape_date, archived_flag):
-    if not selected_route: return [], None
-    
+    if not selected_route:
+        return [], None
+
     origin, dest = selected_route.split('|')
     scrape_date = scrape_date
     # Use the live data to find available dates for THIS specific route
@@ -358,8 +367,8 @@ def update_return_options(selected_route, scrape_date, archived_flag):
     relevant_flights = sorted(
         pd.to_datetime(
             df[
-                (df['origin'] == origin) & 
-                (df['destination'] == dest) & 
+                (df['origin'] == origin) &
+                (df['destination'] == dest) &
                 (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
             ]['return_date']).dt.date.unique(), reverse=True)
 
@@ -388,32 +397,39 @@ def update_table(selected_route, scrape_date, dep_date, ret_date, archived_flag,
 
     # Filter data based on all selections
     mask = (
-        (df['origin'] == origin) & 
-        (df['destination'] == dest) & 
+        (df['origin'] == origin) &
+        (df['destination'] == dest) &
         (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date) &
         (pd.to_datetime(df['departure_date']).dt.date.astype(str) == dep_date) &
         (pd.to_datetime(df['return_date']).dt.date.astype(str) == ret_date)
     )
-    
+
     table_df = df[mask].copy()
-    
+
     # Sort by price ascending
     table_df = table_df.sort_values(by='price', ascending=True)
 
     # Create the Plotly Table
     fig = go.Figure(data=[go.Table(
         header=dict(
-            values=['<b>Airline</b>', '<b>Departure</b>', '<b>Return</b>', '<b>Stops</b>', '<b>Duration</b>', '<b>Price</b>'],
+            values=[
+                '<b>Airline</b>',
+                '<b>Departure</b>',
+                '<b>Return</b>',
+                '<b>Stops</b>',
+                '<b>Duration</b>',
+                '<b>Price</b>'
+                ],
             align='left',
             font=dict(size=12)
         ),
         cells=dict(
             values=[
-                table_df.airline, 
-                table_df.departure_date, 
+                table_df.airline,
+                table_df.departure_date,
                 table_df.return_date,
-                table_df.stops, 
-                table_df.duration, 
+                table_df.stops,
+                table_df.duration,
                 table_df.price.map('€{:,.2f}'.format)
             ],
             fill_color='lavender',

@@ -1,4 +1,5 @@
 import os
+import subprocess
 import time
 import pandas as pd
 from datetime import time as dt_time
@@ -207,6 +208,16 @@ def flight_data_filter(
     return filtered_data[:top_n] if top_n is not None else filtered_data
 
 
+def cleanup_chrome():
+    """Force kill any hanging chrome/chromedriver processes."""
+    try:
+        # Silently kill processes
+        subprocess.run(["pkill", "-f", "chrome"], stderr=subprocess.DEVNULL)
+        subprocess.run(["pkill", "-f", "chromedriver"], stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
+
 def scrape_google_flights_with_retry(
         url,
         connection,
@@ -217,6 +228,9 @@ def scrape_google_flights_with_retry(
     """
     Wraps the scraper with a retry loop.
     """
+    # clean up any hanging processes before starting
+    cleanup_chrome()
+
     for attempt in range(max_retries):
         try:
             result = scrape_google_flights(

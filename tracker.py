@@ -4,16 +4,14 @@ from typing import Generator
 from logger import logger_setup
 from schemas import FlightSchema, SearchSchema, ConnectionSchema
 from db import Session, FlightDB
-from search_manager import read_searches_from_json, write_searches_to_db, update_search_id
+from search_manager import manage_searches
 from web_scraper import get_flight_data
 
 
 logger = logger_setup("tracker.log")
 
 
-def generate_date_combinations(
-        search: SearchSchema
-        ) -> Generator[ConnectionSchema, None, None]:
+def generate_date_combinations(search: SearchSchema) -> Generator[ConnectionSchema, None, None]:
 
     # Convert strings to datetime objects
     start_dt = datetime.strptime(search.earliest_departure, "%Y-%m-%d")
@@ -77,16 +75,12 @@ def run_tracker():
         # Setup DB session
         SessionLocal = Session()
 
-        search_list = read_searches_from_json("searches.json")
-        write_searches_to_db(SessionLocal, search_list)
+        search_list = manage_searches(SessionLocal, "searches.json")
 
         for search in search_list:
             logger.info(
                 f"Start search for {search.origin} -> {search.destination}..."
             )
-
-            # If search does not exist, create new one in DB
-            search = update_search_id(SessionLocal, search)
 
             connection_generator = generate_date_combinations(search)
 

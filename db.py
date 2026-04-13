@@ -13,12 +13,10 @@ class Base(DeclarativeBase):
 class SearchDB(Base):
     __tablename__ = 'searches'
 
-    # Mapped[type] explicitly tells your IDE/type-checker the Python type
     id: Mapped[int] = mapped_column(primary_key=True)
     origin: Mapped[str] = mapped_column(String(100), nullable=False)
     destination: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    # Range parameters
     earliest_departure: Mapped[str] = mapped_column(String(10), nullable=False)
     latest_return: Mapped[str] = mapped_column(String(10), nullable=False)
 
@@ -27,19 +25,24 @@ class SearchDB(Base):
     max_stops: Mapped[int] = mapped_column(Integer, default=0)
     max_duration_hours: Mapped[int] = mapped_column(Integer, default=12)
 
-    # Note: datetime.now is passed as a function (no parentheses)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    created_by: Mapped[str] = mapped_column(String(100), default="admin")
 
-    # Link to the results (List of PriceHistory objects)
+    # Link to the flights
     prices: Mapped[List["FlightDB"]] = relationship(
         "FlightDB", back_populates="search", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
         UniqueConstraint(
-            'origin', 'destination', 'earliest_departure',
-            'latest_return', 'min_stay_days', 'max_stay_days',
-            'max_stops', 'max_duration_hours',
+            'origin',
+            'destination',
+            'earliest_departure',
+            'latest_return',
+            'min_stay_days',
+            'max_stay_days',
+            'max_stops',
+            'max_duration_hours',
             name='_search_params_uc'
         ),
     )

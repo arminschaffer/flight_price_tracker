@@ -21,7 +21,7 @@ def rename_dict_keys(d: dict, key_map: dict) -> dict:
 
 def read_searches_from_google_sheets(
         delete_after_processing: bool = False
-        ) -> list[SearchDB]:
+        ) -> list[SearchSchema]:
 
     spreadsheet_id = str(os.getenv("GOOGLE_SPREADSHEET_ID"))
     credentials_file = str(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
@@ -41,7 +41,8 @@ def read_searches_from_google_sheets(
         "Minimum Duration": "min_stay_days",
         "Maximum Duration": "max_stay_days",
         "Maximum Number of Stops": "max_stops",
-        "Maximum Flight Duration": "max_duration_hours"
+        "Maximum Flight Duration": "max_duration_hours",
+        "Name": "created_by"
     }
 
     creds = Credentials.from_service_account_file(
@@ -58,16 +59,20 @@ def read_searches_from_google_sheets(
         all_search_requests = sheet.get_all_records()
 
         if not all_search_requests:
-            print("No new requests found")
+            logger.info("No new requests found")
         else:
-            print(f"Read {len(all_search_requests)} search requests:")
+            logger.info(f"{len(all_search_requests)} new request(s) found in Google Sheets.")
 
             for search_request in all_search_requests:
-                print(search_request)
-
                 search_request = rename_dict_keys(search_request, HEADERS_MAP)
+                
+                # fill default values
+                if search_request.get("max_stops") == "":
+                    search_request["max_stops"] = 0
+                if search_request.get("max_duration_hours") == "":
+                    search_request["max_duration_hours"] = 12
+
                 print(search_request)
-                print(f"Processing: {search_request}")
                 search_list.append(SearchSchema(**search_request))
 
             if delete_after_processing:
@@ -86,7 +91,7 @@ def read_searches_from_google_sheets(
     return search_list
 
 
-def read_searches_from_json(filepath="searches.json") -> list[SearchSchema]:
+def read_searches_from_json(filepath: str = "searches.json") -> list[SearchSchema]:
     if not os.path.exists(filepath):
         return []
 
@@ -106,7 +111,9 @@ def write_searches_to_db(session, new_searches: list[SearchSchema]) -> None:
     for search in new_searches:
         try:
             # Attempt to find the existing record
-            instance = session.query(SearchDB).filter_by(**search.model_dump(exclude={'id'})).first()
+            instance = session.query(SearchDB).filter_by(
+                **search.model_dump(exclude={'id', 'created_at', 'created_by'})
+                ).first()
 
             if instance:
                 pass
@@ -114,11 +121,41 @@ def write_searches_to_db(session, new_searches: list[SearchSchema]) -> None:
                 # If not found, create it using the same dictionary
                 instance = SearchDB(**search.model_dump())
                 session.add(instance)
-                session.commit()
-                session.refresh(instance)
-                logger.info(f"New search created (ID: {instance.id}).")
+                session.flush()
+                logger.info(f"New search queued (ID: {instance.id}).")
         except Exception as e:
             logger.error(f"Failed to process search {search}: {e}")
+    # commit new searches to DB
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Final commit failed: {e}")
+
+
+def read_searches_from_db(session) -> list[SearchSchema]:
+    try:
+        search_records = session.query(SearchDB).all()
+        return [SearchSchema.model_validate(record.__dict__) for record in search_records]
+    except Exception as e:
+        logger.error(f"Failed to read searches from DB: {e}")
+        return []
+
+
+def manage_searches(session, json_file: str = "searches.json") -> list[SearchSchema]:
+    # handle google sheet requests
+    search_list = read_searches_from_google_sheets(delete_after_processing=True)
+
+    if search_list:
+        write_searches_to_db(session, search_list)
+
+    # handle json file requests
+    search_list = read_searches_from_json(json_file)
+
+    if search_list:
+        write_searches_to_db(session, search_list)
+
+    return read_searches_from_db(session)
 
 
 def update_search_id(session, search: SearchSchema) -> SearchSchema:
@@ -156,3 +193,8 @@ def get_or_create_search_entry(session, search: SearchSchema) -> SearchSchema:
         session.refresh(instance)
         logger.info(f"New search created (ID: {instance.id}).")
         return SearchSchema(id=instance.id, **search.model_dump(exclude={'id'}))
+
+
+if __name__ == "__main__":
+    # quick google sheet test run
+    print(read_searches_from_google_sheets(delete_after_processing=False))
