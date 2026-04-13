@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from web_scraper import generate_google_flights_url, flight_data_filter, scrape_google_flights
 from schemas import ConnectionSchema, FlightSchema
 
@@ -12,8 +12,8 @@ def mock_flights() -> list[FlightSchema]:
             origin="VIE",
             destination="LHR",
             airline="Test Airline",
-            departure_date="2026-01-01",
-            return_date="2026-01-05",
+            departure_date=date(year=2026, month=1, day=1),
+            return_date=date(year=2026, month=1, day=5),
             price=100,
             duration="2 hr 0 min",
             stops=0
@@ -23,8 +23,8 @@ def mock_flights() -> list[FlightSchema]:
             origin="VIE",
             destination="LHR",
             airline="Test Airline",
-            departure_date="2026-01-01",
-            return_date="2026-01-05",
+            departure_date=date(year=2026, month=1, day=1),
+            return_date=date(year=2026, month=1, day=5),
             price=50,
             duration="5 hr 0 min",
             stops=0
@@ -34,8 +34,8 @@ def mock_flights() -> list[FlightSchema]:
             origin="VIE",
             destination="LHR",
             airline="Test Airline",
-            departure_date="2026-01-01",
-            return_date="2026-01-05",
+            departure_date=date(year=2026, month=1, day=1),
+            return_date=date(year=2026, month=1, day=5),
             price=50,
             duration="3 hr 0 min",
             stops=3
@@ -48,8 +48,8 @@ def mock_connection() -> ConnectionSchema:
     return ConnectionSchema(
         origin="VIE",
         destination="LHR",
-        departure_date="2026-01-01",
-        return_date="2026-01-05",
+        departure_date=date(year=2026, month=1, day=1),
+        return_date=date(year=2026, month=1, day=5),
         stay_duration=4,
         max_stops=1,
         max_duration_hours=3
@@ -58,9 +58,9 @@ def mock_connection() -> ConnectionSchema:
 
 @pytest.fixture
 def dynamic_mock_connection():
-    today = datetime.now()
-    departure_date = (today + timedelta(days=30)).strftime("%Y-%m-%d")
-    return_date = (today + timedelta(days=35)).strftime("%Y-%m-%d")
+    today = datetime.now().date()
+    departure_date = today + timedelta(days=30)
+    return_date = today + timedelta(days=35)
     return ConnectionSchema(
         origin="VIE",
         destination="LHR",

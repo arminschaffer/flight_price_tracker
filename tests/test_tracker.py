@@ -1,4 +1,5 @@
 import pytest
+from datetime import date
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -25,8 +26,8 @@ def mock_search() -> SearchSchema:
     return SearchSchema(
         origin="VIE",
         destination="LHR",
-        earliest_departure="2026-01-01",
-        latest_return="2026-01-30",
+        earliest_departure=date(year=2026, month=1, day=1),
+        latest_return=date(year=2026, month=1, day=30),
     )
 
 
@@ -37,8 +38,8 @@ def mock_flights() -> list[FlightSchema]:
             origin="VIE",
             destination="LHR",
             airline="Test Airline",
-            departure_date="2026-01-01",
-            return_date="2026-01-30",
+            departure_date=date(year=2026, month=1, day=1),
+            return_date=date(year=2026, month=1, day=30),
             price=100,
             duration="2 hr 0 min",
             stops=0
@@ -47,8 +48,8 @@ def mock_flights() -> list[FlightSchema]:
             origin="VIE",
             destination="LHR",
             airline="Test Airline",
-            departure_date="2026-01-01",
-            return_date="2026-01-30",
+            departure_date=date(year=2026, month=1, day=1),
+            return_date=date(year=2026, month=1, day=30),
             price=50,
             duration="5 hr 0 min",
             stops=0
@@ -57,8 +58,8 @@ def mock_flights() -> list[FlightSchema]:
             origin="VIE",
             destination="LHR",
             airline="Test Airline",
-            departure_date="2026-01-01",
-            return_date="2026-01-30",
+            departure_date=date(year=2026, month=1, day=1),
+            return_date=date(year=2026, month=1, day=30),
             price=50,
             duration="3 hr 0 min",
             stops=3

@@ -2,7 +2,7 @@ import os
 import subprocess
 import time
 import pandas as pd
-from datetime import time as dt_time
+from datetime import date, time as dt_time
 from typing import List
 import shutil
 
@@ -277,8 +277,8 @@ def main():
     connection = ConnectionSchema(
         origin="VIE",
         destination="LHR",
-        departure_date="2026-01-01",
-        return_date="2026-01-10",
+        departure_date=date(year=2026, month=1, day=1),
+        return_date=date(year=2026, month=1, day=10),
         stay_duration=10,
     )
     search_url, encoded_query = generate_google_flights_url(connection)

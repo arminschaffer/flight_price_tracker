@@ -14,8 +14,8 @@ logger = logger_setup("tracker.log")
 def generate_date_combinations(search: SearchSchema) -> Generator[ConnectionSchema, None, None]:
 
     # Convert strings to datetime objects
-    start_dt = datetime.strptime(search.earliest_departure, "%Y-%m-%d")
-    end_dt = datetime.strptime(search.latest_return, "%Y-%m-%d")
+    start_dt = search.earliest_departure
+    end_dt = search.latest_return
 
     # The absolute latest someone could depart is (Latest Return - Min Stay)
     latest_departure_possible = end_dt - timedelta(days=search.min_stay_days)
@@ -31,8 +31,8 @@ def generate_date_combinations(search: SearchSchema) -> Generator[ConnectionSche
                 yield ConnectionSchema(
                     origin=search.origin,
                     destination=search.destination,
-                    departure_date=current_depart.strftime("%Y-%m-%d"),
-                    return_date=current_return.strftime("%Y-%m-%d"),
+                    departure_date=current_depart,
+                    return_date=current_return,
                     stay_duration=stay,
                     max_stops=search.max_stops,
                     max_duration_hours=search.max_duration_hours
@@ -86,7 +86,7 @@ def run_tracker():
 
             n_combos = 0
             for connection in connection_generator:
-                dep_date_obj = datetime.strptime(connection.departure_date, "%Y-%m-%d").date()
+                dep_date_obj = connection.departure_date
 
                 if dep_date_obj < datetime.now().date():
                     logger.info(
