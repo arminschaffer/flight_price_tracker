@@ -3,11 +3,11 @@ import time
 import pandas as pd
 import logging
 from logging.handlers import RotatingFileHandler
-from datetime import date, time as dt_time
-from typing import List, Dict, Optional, Tuple
+from datetime import time as dt_time
+from typing import List, Dict, Optional
 import shutil
+import subprocess
 
-from selenium import webdriver 
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.webdriver import WebDriver as Chrome
@@ -15,7 +15,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
 
 # --- 1. LOGGING SETUP ---
@@ -198,7 +197,7 @@ def flight_data_filter(flights_data: list[dict],
             try:
                 if stops > max_stops:
                     continue
-            except:
+            except Exception:
                 continue  # Unable to parse stops, skip this flight
 
         # Filter by max_duration
@@ -213,12 +212,22 @@ def flight_data_filter(flights_data: list[dict],
                 total_duration = dt_time(hour=hours, minute=minutes)
                 if total_duration > max_duration:
                     continue
-            except:
+            except Exception:
                 continue  # Unable to parse duration, skip this flight
 
         filtered_data.append(flight)
 
     return filtered_data[:top_n] if top_n is not None else filtered_data
+
+
+def cleanup_chrome():
+    """Force kill any hanging chrome/chromedriver processes."""
+    try:
+        # Silently kill processes
+        subprocess.run(["pkill", "-f", "chrome"], stderr=subprocess.DEVNULL)
+        subprocess.run(["pkill", "-f", "chromedriver"], stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
 
 
 def scrape_google_flights_with_retry(
@@ -227,6 +236,9 @@ def scrape_google_flights_with_retry(
     """
     Wraps the scraper with a retry loop.
     """
+    # clean up any hanging processes before starting
+    cleanup_chrome()
+
     for attempt in range(max_retries):
         try:
             result = scrape_google_flights(
