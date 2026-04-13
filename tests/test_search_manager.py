@@ -3,7 +3,7 @@ from datetime import date
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from search_manager import write_searches_to_db, read_searches_from_db
+from search_manager import write_searches_to_db, read_searches_from_db, read_searches_from_json
 from db import SearchDB, Base
 from schemas import SearchSchema
 
@@ -86,3 +86,12 @@ def test_create_search_new_record_with_existing_record(mock_db_session, mock_sea
     assert searches[1].id is not None
     assert searches[1].origin == "VIE"
     assert mock_db_session.query(SearchDB).count() == 2  # Two records in db
+
+
+def test_read_searches_from_json():
+    """Test that searches are correctly read from a JSON file."""
+    searches = read_searches_from_json("searches_examples.json")
+    assert len(searches) == 2
+    assert searches[0].origin == "Vienna"
+    assert searches[0].destination == "Lisbon"
+    assert searches[1].destination == "Agadir"
