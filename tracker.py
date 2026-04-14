@@ -75,7 +75,7 @@ def run_tracker():
         # Setup DB session
         SessionLocal = Session()
 
-        search_list = manage_searches(SessionLocal, "searches.json")
+        search_list = manage_searches(SessionLocal, "searches.json", filter_past_searches=True)
 
         for search in search_list:
             logger.info(

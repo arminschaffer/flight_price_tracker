@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime
 from pydantic import TypeAdapter, ValidationError
 import gspread
 from google.oauth2.service_account import Credentials
@@ -65,14 +66,13 @@ def read_searches_from_google_sheets(
 
             for search_request in all_search_requests:
                 search_request = rename_dict_keys(search_request, HEADERS_MAP)
-                
+
                 # fill default values
                 if search_request.get("max_stops") == "":
                     search_request["max_stops"] = 0
                 if search_request.get("max_duration_hours") == "":
                     search_request["max_duration_hours"] = 12
 
-                print(search_request)
                 search_list.append(SearchSchema(**search_request))
 
             if delete_after_processing:
@@ -142,7 +142,7 @@ def read_searches_from_db(session) -> list[SearchSchema]:
         return []
 
 
-def manage_searches(session, json_file: str = "searches.json") -> list[SearchSchema]:
+def manage_searches(session, json_file: str = "searches.json", filter_past_searches: bool = True) -> list[SearchSchema]:
     # handle google sheet requests
     search_list = read_searches_from_google_sheets(delete_after_processing=True)
 
@@ -155,12 +155,19 @@ def manage_searches(session, json_file: str = "searches.json") -> list[SearchSch
     if search_list:
         write_searches_to_db(session, search_list)
 
-    return read_searches_from_db(session)
+    searches = read_searches_from_db(session)
+
+    if filter_past_searches:
+        today = datetime.now().date()
+        searches = [search for search in searches if search.earliest_departure >= today]
+    return searches
 
 
 def update_search_id(session, search: SearchSchema) -> SearchSchema:
     try:
-        instance = session.query(SearchDB).filter_by(**search.model_dump(exclude={'id'})).first()
+        instance = session.query(SearchDB).filter_by(
+            **search.model_dump(exclude={'id', 'created_at', 'created_by'})
+            ).first()
 
         if not instance:
             logger.warning(f"Search parameters not found in DB: {search}")
@@ -180,7 +187,9 @@ def get_or_create_search_entry(session, search: SearchSchema) -> SearchSchema:
     otherwise creates a new one.
     """
     # Attempt to find the existing record
-    instance = session.query(SearchDB).filter_by(**search.model_dump(exclude={'id'})).first()
+    instance = session.query(SearchDB).filter_by(
+        **search.model_dump(exclude={'id', 'created_at', 'created_by'})
+        ).first()
 
     if instance:
         logger.info(f"Search found in DB (ID: {instance.id}).")
