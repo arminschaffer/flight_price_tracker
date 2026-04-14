@@ -18,5 +18,6 @@ services:
       - ./searches.json:/app/searches.json:Z
       - ./tracker.log:/app/tracker.log:Z
       - ./scraper.log:/app/scraper.log:Z
+      - ./search_manager.log:/app/search_manager.log:Z
     shm_size: 2gb
     restart: on-failure
