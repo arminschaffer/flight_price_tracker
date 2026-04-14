@@ -4,42 +4,34 @@ A robust, automated Google Flights scraper built with Python, Selenium, and SQLA
 
 ## ✨ Features
 
-Daily Automation: Scheduled to run every day at 10:00 AM using the schedule library.
+Daily Automation: Scheduled to run every day.
 
 Smart Scraper: Handles Google consent screens, clears pop-up recommendations, and extracts flight data reliably.
 
-Structured Logging: Uses RotatingFileHandler to keep track of successes and errors without filling up your disk.
-
-High Performance: Optimized with uv for lightning-fast environment management and execution.
-
 Database Integration: Saves all scraped data into a structured format for long-term price analysis.
+
+External Requests: handles user track request via google forms/sheets.
+
+Tracker App: tracked prices can be accessed via a dashboard web app.
 
 ## 🚀 Getting Started
 
-### 1. Prerequisites
+### 1. Installation
 
-Ensure you have uv installed on your system:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### 2. Installation
-
-Clone the repository and sync the environment:
+Clone the repository:
 
 ```bash
 git clone https://github.com/arminschaffer/flight_price_tracker
 cd flight_price_tracker
 ```
 
-### 3. Create virtual environment and install dependencies
+### 2. Create virtual environment and install dependencies
 
 ```bash
 uv sync
 ```
 
-### 4. Configuration
+### 3. Configuration
 
 Create a searches.json file in the root directory to define the flights you want to track (e.g. searches_examples.json):
 
@@ -59,24 +51,10 @@ Create a searches.json file in the root directory to define the flights you want
 ## 🛠 Usage
 
 Run Manually
-To execute the scraper once immediately:
-
-```bash
-uv run main.py --now
-```
-
-Start the Scheduler
-To start the script in "Waiting" mode (it will run every day at 10:00):
+To execute the scraper:
 
 ```bash
 uv run main.py
-```
-
-Background Execution (Linux)
-To keep the scheduler running after you close your terminal:
-
-```bash
-nohup uv run main.py &
 ```
 
 ## 🦭📦 Using Docker (Raspberry Pi / Linux)
@@ -98,7 +76,7 @@ git clone https://github.com/arminschaffer/flight_price_tracker
 cd flight_price_tracker
 
 # Create empty files for volumes to prevent permission issues
-touch flight_databank.db searches.json tracker.log scraper.log
+touch flight_database.db searches.json tracker.log scraper.log search_manager.log
 ```
 
 ### 3. Build and Run
@@ -119,7 +97,7 @@ This command performs the following:
 
 ## 📋 Monitoring
 
-The results can be viewed in a dash app by running the app.py. 
+The results can be viewed in a dash app by running the app.py.
 
 The project maintains a detailed log of all activities:
 
