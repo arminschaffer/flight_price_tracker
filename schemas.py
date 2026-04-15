@@ -41,4 +41,4 @@ class FlightSchema(BaseModel):
     price: int
     duration: str
     stops: int
-    scraped_at: datetime = Field(default_factory=datetime.now)   
+    scraped_at: datetime = Field(default_factory=datetime.now)
