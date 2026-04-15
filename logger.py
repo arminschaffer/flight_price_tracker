@@ -4,7 +4,13 @@ from logging.handlers import RotatingFileHandler
 
 def logger_setup(logger_file_name: str, logger_name: str = __name__) -> logging.Logger:
     logger = logging.getLogger(logger_name)
+
+    if logger.hasHandlers():
+        return logger
+
     logger.setLevel(logging.INFO)
+
+    logger.propagate = False
 
     # Rotate logs at 5MB, keep 3 backup files
     file_handler = RotatingFileHandler(
