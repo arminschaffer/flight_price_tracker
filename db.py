@@ -61,6 +61,7 @@ class FlightDB(Base):
     price: Mapped[int] = mapped_column(Integer, nullable=False)
     departure_date: Mapped[str] = mapped_column(String(10), nullable=False)
     return_date: Mapped[Optional[str]] = mapped_column(String(10))
+    flight_time: Mapped[str] = mapped_column(String(30))
     airline: Mapped[Optional[str]] = mapped_column(String(512))
     stops: Mapped[Optional[int]] = mapped_column(Integer)
     duration: Mapped[Optional[str]] = mapped_column(String)

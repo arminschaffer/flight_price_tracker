@@ -1,5 +1,4 @@
 import os
-import subprocess
 import time
 import pandas as pd
 from datetime import date, time as dt_time
@@ -57,6 +56,7 @@ class Selectors:
     FLIGHT_CARD = "li.pIav2d"
     AIRLINE = ".sSHqwe"
     DURATION = ".gvkrdb"
+    FLIGHT_TIME = ".zxVSec"
     STOPS = ".EfT7Ae"
     PRICE = ".FpEdX span"
     # calender selectors
@@ -147,6 +147,7 @@ class GoogleFlightsScraper:
         """Extracts data from a single flight row."""
         airline = element.find_element(By.CSS_SELECTOR, Selectors.AIRLINE).text
         duration = element.find_element(By.CSS_SELECTOR, Selectors.DURATION).text
+        flight_time = element.find_element(By.CSS_SELECTOR, Selectors.FLIGHT_TIME).text
         price_text = element.find_element(By.CSS_SELECTOR, Selectors.PRICE).text
 
         price = int(''.join(filter(str.isdigit, price_text)))
@@ -160,6 +161,7 @@ class GoogleFlightsScraper:
             airline=airline,
             departure_date=connection.departure_date,
             return_date=connection.return_date,
+            flight_time=flight_time,
             price=price,
             duration=duration,
             stops=stops
@@ -169,10 +171,10 @@ class GoogleFlightsScraper:
             self,
             url: str,
             connection: ConnectionSchema,
-            cheapest_flights: bool = True,
+            cheapest_flights: bool = False,
             more_flights: bool = False
             ) -> List[FlightSchema]:
-        """Main execution flow for scraping."""
+        """Scrape flight data for specific connection."""
         try:
             logger.info(f"Scraping URL: {url}")
             self.driver.get(url)
@@ -202,21 +204,12 @@ class GoogleFlightsScraper:
         finally:
             self.driver.quit()
 
-    def cleanup_chrome(self) -> None:
-        """Force kill any hanging chrome/chromedriver processes."""
-        try:
-            # Silently kill processes
-            subprocess.run(["pkill", "-f", "chrome"], stderr=subprocess.DEVNULL)
-            subprocess.run(["pkill", "-f", "chromedriver"], stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
-
     def scrape_flights_with_retry(
             self, url, connection, cheapest_flights=True, more_flights=False, max_retries=3
             ) -> List[FlightSchema]:
         """Wraps the scraper with a retry loop."""
         # clean up any hanging processes before starting
-        self.cleanup_chrome()
+        # self.cleanup_chrome()
 
         for attempt in range(max_retries):
             try:

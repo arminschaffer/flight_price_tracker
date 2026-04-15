@@ -34,6 +34,7 @@ class FlightSchema(BaseModel):
     destination: str
     airline: str
     departure_date: date
+    flight_time: str
     return_date: date
     price: int
     duration: str

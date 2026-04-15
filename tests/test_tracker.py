@@ -40,6 +40,7 @@ def mock_flights() -> list[FlightSchema]:
             airline="Test Airline",
             departure_date=date(year=2026, month=1, day=1),
             return_date=date(year=2026, month=1, day=30),
+            flight_time="6:00 AM - 8:00 AM",
             price=100,
             duration="2 hr 0 min",
             stops=0
@@ -50,6 +51,7 @@ def mock_flights() -> list[FlightSchema]:
             airline="Test Airline",
             departure_date=date(year=2026, month=1, day=1),
             return_date=date(year=2026, month=1, day=30),
+            flight_time="6:00 AM - 11:00 AM",
             price=50,
             duration="5 hr 0 min",
             stops=0
@@ -60,6 +62,7 @@ def mock_flights() -> list[FlightSchema]:
             airline="Test Airline",
             departure_date=date(year=2026, month=1, day=1),
             return_date=date(year=2026, month=1, day=30),
+            flight_time="7:00 AM - 10:00 AM",
             price=50,
             duration="3 hr 0 min",
             stops=3
