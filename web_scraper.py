@@ -229,13 +229,13 @@ class GoogleFlightsScraper:
         logger.error(f"All {max_retries} attempts failed.")
         return []
 
-    def scrape_price_range(
+    def scrape_price_list(
             self,
             url: str,
             ) -> List[int]:
-        """Scraping flight price range."""
+        """Scraping flight price list."""
         try:
-            logger.info(f"Scraping price range URL: {url}")
+            logger.info(f"Scraping price list URL: {url}")
             self.driver.get(url)
 
             self._handle_overlays()
@@ -312,7 +312,7 @@ class GoogleFlightsScraper:
             return prices
 
         except Exception as e:
-            logger.error(f"Critical error during price range scrape: {e}")
+            logger.error(f"Critical error during price list scrape: {e}")
             return []
         finally:
             self.driver.quit()
@@ -381,15 +381,15 @@ def get_flight_data(
     return flight_data_filter(data, connection, top_n)
 
 
-def get_price_range(
+def get_price_list(
         connection: ConnectionSchema,
         one_way: bool = False,
-        ) -> list[int]:
+        ) -> ConnectionSchema:
 
     url, _ = generate_google_flights_url(connection, one_way)
     scraper = GoogleFlightsScraper(headless=True)
-    data = scraper.scrape_price_range(url)
-    return data
+    data = scraper.scrape_price_list(url)
+    return ConnectionSchema(price_list=data, **connection.model_dump(exclude={"price_list"}))
 
 
 def main():

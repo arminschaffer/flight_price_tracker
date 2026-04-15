@@ -19,6 +19,7 @@ class SearchSchema(BaseModel):
 
 class ConnectionSchema(BaseModel):
     """Schema for specific flight connections"""
+    id: int | None = None
     origin: str
     destination: str
     departure_date: date
@@ -26,6 +27,7 @@ class ConnectionSchema(BaseModel):
     stay_duration: int
     max_stops: int = 0
     max_duration_hours: int = 12
+    price_list: list[int] | None = None
 
 
 class FlightSchema(BaseModel):
@@ -39,4 +41,4 @@ class FlightSchema(BaseModel):
     price: int
     duration: str
     stops: int
-    scraped_at: datetime = Field(default_factory=datetime.now)
+    scraped_at: datetime = Field(default_factory=datetime.now)   

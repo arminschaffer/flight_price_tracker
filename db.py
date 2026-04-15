@@ -28,12 +28,12 @@ class SearchDB(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     created_by: Mapped[str] = mapped_column(String(100), default="admin")
 
-    # Link to the flights and price snapshots
+    # Link to the flights and price list
     prices: Mapped[List["FlightDB"]] = relationship(
         "FlightDB", back_populates="search", cascade="all, delete-orphan"
         )
-    price_range_snapshots: Mapped[List["PriceSnapshotDB"]] = relationship(
-        "PriceSnapshotDB", back_populates="search", cascade="all, delete-orphan"
+    price_list: Mapped[List["PriceListDB"]] = relationship(
+        "PriceListDB", back_populates="search", cascade="all, delete-orphan"
         )
 
     __table_args__ = (
@@ -51,11 +51,28 @@ class SearchDB(Base):
     )
 
 
+class PriceListDB(Base):
+    """
+    Stores the price list of the 12-month calendar for a specific connection.
+    """
+    __tablename__ = 'price_list'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'))
+
+    price_list: Mapped[List[int]] = mapped_column(JSON, nullable=False)
+    scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+    # Relationship back to the parent search
+    search: Mapped["SearchDB"] = relationship("SearchDB", back_populates="price_list")
+
+
 class FlightDB(Base):
     __tablename__ = 'flights'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'))
+    price_list_id: Mapped[int] = mapped_column(ForeignKey('price_list.id'))
 
     # Specifics of the actual flight found
     price: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -69,22 +86,6 @@ class FlightDB(Base):
 
     # Relationship back to the parent search
     search: Mapped["SearchDB"] = relationship("SearchDB", back_populates="prices")
-
-
-class PriceSnapshotDB(Base):
-    """
-    Stores a snapshot of the 12-month price calendar for a specific connection.
-    """
-    __tablename__ = 'price_range_snapshots'
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'))
-
-    price_list: Mapped[List[int]] = mapped_column(JSON, nullable=False)
-    scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-
-    # Relationship back to the parent search
-    search: Mapped["SearchDB"] = relationship("SearchDB", back_populates="price_range_snapshots")
 
 
 # --- Database Setup ---
