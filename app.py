@@ -3,6 +3,7 @@ import dash
 from dash import dcc, html, Input, Output
 import plotly.graph_objects as go
 import pandas as pd
+import ast
 from sqlalchemy import create_engine
 
 # Database Setup
@@ -27,7 +28,19 @@ def mark_archived(df):
 
 def get_data(include_archived=True):
     # Fetch data from SQL
-    query = 'SELECT * FROM searches INNER JOIN price_history ON searches.id = price_history.search_id'
+    query = (
+        'SELECT * '
+        'FROM searches '
+        'INNER JOIN '
+        'price_range_snapshots '
+        'ON '
+        'searches.id = price_range_snapshots.search_id '
+        'INNER JOIN '
+        'flights '
+        'ON '
+        'searches.id = flights.search_id'
+        )
+
     df = pd.read_sql(query, con=engine)
     df = df.loc[:, ~df.columns.duplicated()].copy()
 
@@ -70,7 +83,8 @@ app.layout = html.Div(style={'fontFamily': 'Arial', 'padding': '20px', 'margin':
                 id='price-mode',
                 options=[
                     {'label': ' Min Price', 'value': 'min'},
-                    {'label': ' Average Price', 'value': 'mean'}
+                    {'label': ' Average Price', 'value': 'mean'},
+                    {'label': ' Price Range', 'value': 'price_range'}
                 ],
                 value=['min'],
                 labelStyle={'display': 'inline-block', 'marginRight': '20px', 'cursor': 'pointer'}
@@ -141,24 +155,51 @@ def update_scatter(selected_route, selected_metrics, archived_flag, n):
 
     fig = go.Figure()
 
-    # Check if 'min' is in the list of selected metrics
     if 'min' in selected_metrics:
         df_min = df_temp.groupby('scraped_at')['price'].min()
         fig.add_trace(go.Scatter(
-            x=df_min.index, y=df_min.values,
+            x=df_min.index,
+            y=df_min.values,
             name='Min Price',
             line=dict(color='#2ca02c', width=3),
             mode='lines+markers'
         ))
 
-    # Check if 'mean' is in the list of selected metrics
     if 'mean' in selected_metrics:
         df_mean = df_temp.groupby('scraped_at')['price'].mean()
         fig.add_trace(go.Scatter(
-            x=df_mean.index, y=df_mean.values,
+            x=df_mean.index,
+            y=df_mean.values,
             name='Avg Price',
             line=dict(color='#1f77b4', width=3, dash='dash'),
             mode='lines+markers'
+        ))
+
+    if 'price_range' in selected_metrics:
+        df_temp['price_list'] = df_temp['price_list'].apply(
+            lambda x: ast.literal_eval(x) if isinstance(x, str) else x
+            )
+        df_exp = df_temp.explode('price_list')
+        df_exp['price_list'] = pd.to_numeric(df_exp['price_list'])
+        df_range = df_exp.groupby('scraped_at')['price_list']
+        print(df_range.min())
+        df_range_min = df_range.min()
+        df_range_max = df_range.max()
+
+        fig.add_trace(go.Scatter(
+            x=df_range_max.index,
+            y=df_range_max.values,
+            name='Max Price',
+            mode='lines+markers',
+            line=dict(color="#6B7D8A", width=3, dash='dash'),
+            ))
+        fig.add_trace(go.Scatter(
+            x=df_range_min.index,
+            y=df_range_min.values,
+            name='Min Price',
+            mode='lines+markers',
+            line=dict(color="#6B7D8A", width=3, dash='dash'),
+            fill='tonexty'
         ))
 
     fig.update_layout(
@@ -405,6 +446,7 @@ def update_table(selected_route, scrape_date, dep_date, ret_date, archived_flag,
     )
 
     table_df = df[mask].copy()
+    table_df['scraped_at'] = pd.to_datetime(table_df['scraped_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
 
     # Sort by price ascending
     table_df = table_df.sort_values(by='price', ascending=True)
@@ -415,10 +457,12 @@ def update_table(selected_route, scrape_date, dep_date, ret_date, archived_flag,
             values=[
                 '<b>Airline</b>',
                 '<b>Departure</b>',
+                '<b>Departing Flight Time</b>',
                 '<b>Return</b>',
                 '<b>Stops</b>',
                 '<b>Duration</b>',
-                '<b>Price</b>'
+                '<b>Price</b>',
+                '<b>Scraped at</b>'
                 ],
             align='left',
             font=dict(size=12)
@@ -427,10 +471,12 @@ def update_table(selected_route, scrape_date, dep_date, ret_date, archived_flag,
             values=[
                 table_df.airline,
                 table_df.departure_date,
+                table_df.flight_time,
                 table_df.return_date,
                 table_df.stops,
                 table_df.duration,
-                table_df.price.map('€{:,.2f}'.format)
+                table_df.price.map('€{:,.2f}'.format),
+                table_df.scraped_at
             ],
             fill_color='lavender',
             align='left',
