@@ -1,6 +1,6 @@
 import pytest
 from datetime import date, datetime, timedelta
-from web_scraper import generate_google_flights_url, flight_data_filter, scrape_google_flights
+from web_scraper import GoogleFlightsScraper, generate_google_flights_url, flight_data_filter
 from schemas import ConnectionSchema, FlightSchema
 
 
@@ -92,8 +92,22 @@ def test_scrape_execution(dynamic_mock_connection: ConnectionSchema):
     """Runs a live scrape to ensure the Chrome setup and extraction works."""
 
     test_url, _ = generate_google_flights_url(dynamic_mock_connection)
-    results = scrape_google_flights(test_url, dynamic_mock_connection, cheapest_flights_option=True)
+    scraper = GoogleFlightsScraper(headless=True)
+    results = scraper.scrape_flights(test_url, dynamic_mock_connection, cheapest_flights=True)
 
     assert isinstance(results, list)
     assert type(results[0].price) is int
     assert type(results[0].airline) is str
+    assert type(results[0].duration) is str
+
+
+def test_price_range_scrape_execution(dynamic_mock_connection: ConnectionSchema):
+    """Runs a live scrape to ensure the Chrome setup and extraction works."""
+
+    test_url, _ = generate_google_flights_url(dynamic_mock_connection)
+    scraper = GoogleFlightsScraper(headless=True)
+    results = scraper.scrape_price_range(test_url)
+    print(results)
+    assert isinstance(results, list)
+    assert len(results) > 0
+    assert type(results[0]) is int

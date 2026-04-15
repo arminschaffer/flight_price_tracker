@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import String, Integer, DateTime, ForeignKey, UniqueConstraint, create_engine
+from sqlalchemy import String, Integer, DateTime, JSON, ForeignKey, UniqueConstraint, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
 
@@ -28,10 +28,13 @@ class SearchDB(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     created_by: Mapped[str] = mapped_column(String(100), default="admin")
 
-    # Link to the flights
+    # Link to the flights and price snapshots
     prices: Mapped[List["FlightDB"]] = relationship(
         "FlightDB", back_populates="search", cascade="all, delete-orphan"
-    )
+        )
+    price_range_snapshots: Mapped[List["PriceSnapshotDB"]] = relationship(
+        "PriceSnapshotDB", back_populates="search", cascade="all, delete-orphan"
+        )
 
     __table_args__ = (
         UniqueConstraint(
@@ -49,7 +52,7 @@ class SearchDB(Base):
 
 
 class FlightDB(Base):
-    __tablename__ = 'price_history'
+    __tablename__ = 'flights'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'))
@@ -65,6 +68,22 @@ class FlightDB(Base):
 
     # Relationship back to the parent search
     search: Mapped["SearchDB"] = relationship("SearchDB", back_populates="prices")
+
+
+class PriceSnapshotDB(Base):
+    """
+    Stores a snapshot of the 12-month price calendar for a specific connection.
+    """
+    __tablename__ = 'price_range_snapshots'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'))
+
+    price_list: Mapped[List[int]] = mapped_column(JSON, nullable=False)
+    scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+    # Relationship back to the parent search
+    search: Mapped["SearchDB"] = relationship("SearchDB", back_populates="price_range_snapshots")
 
 
 # --- Database Setup ---

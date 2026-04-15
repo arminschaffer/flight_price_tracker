@@ -3,9 +3,9 @@ from typing import Generator
 
 from logger import logger_setup
 from schemas import FlightSchema, SearchSchema, ConnectionSchema
-from db import Session, FlightDB
+from db import Session, FlightDB, PriceSnapshotDB
 from search_manager import manage_searches
-from web_scraper import get_flight_data
+from web_scraper import get_flight_data, get_price_range
 
 
 logger = logger_setup("tracker.log")
@@ -43,7 +43,11 @@ def generate_date_combinations(search: SearchSchema) -> Generator[ConnectionSche
         current_depart += timedelta(days=1)
 
 
-def write_flights_to_db(session, flight_data: list[FlightSchema], search: SearchSchema) -> None:
+def write_flights_to_db(
+        session,
+        flight_data: list[FlightSchema],
+        search: SearchSchema
+        ) -> None:
     """
     Converts list of FlightSchema to FlightDB objects and saves them to the database.
     """
@@ -66,6 +70,29 @@ def write_flights_to_db(session, flight_data: list[FlightSchema], search: Search
     except Exception as e:
         session.rollback()
         logger.error(f"Failed to save flights to DB: {e}")
+
+
+def write_price_snapshot_to_db(
+        session,
+        prices: list[int],
+        search: SearchSchema
+        ) -> None:
+    """
+    Converts list of FlightSchema to FlightDB objects and saves them to the database.
+    """
+    if not prices:
+        logger.info("No price data to save.")
+        return
+
+    new_snapshot = PriceSnapshotDB(price_list=prices, search_id=search.id)
+
+    try:
+        session.add(new_snapshot)
+        session.commit()
+        logger.info("Successfully saved price snapshot to the database.")
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Failed to save price snapshot to DB: {e}")
 
 
 def run_tracker():
@@ -97,12 +124,15 @@ def run_tracker():
                 flight_data = get_flight_data(
                     connection=connection,
                     one_way=False,
-                    cheapest_flights_option=True,
+                    cheapest_flights=True,
                     more_flights=False,
                     top_n=3,
                 )
-
                 write_flights_to_db(SessionLocal, flight_data, search)
+
+                price_range = get_price_range(connection)
+                write_price_snapshot_to_db(SessionLocal, price_range, search)
+
                 n_combos += 1
 
             logger.info(
