@@ -18,7 +18,7 @@ schedule.every().day.at(schedule_time).do(run_tracker)
 
 
 def main():
-    schedule_mode = bool(os.getenv("SCHEDULE_MODE"))
+    schedule_mode = bool(os.getenv("SCHEDULE_MODE") == "True")
 
     if schedule_mode:
         if datetime.now().time() > datetime.strptime(schedule_time, "%H:%M").time():
