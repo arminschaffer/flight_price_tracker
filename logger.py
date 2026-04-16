@@ -3,7 +3,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 
-def logger_setup(logger_file_name: str, logger_dir: str = "logs/", logger_name: str = __name__) -> logging.Logger:
+def logger_setup(logger_file_name: str, logger_dir: str = "logs/", logger_name: str = "logger") -> logging.Logger:
     logger = logging.getLogger(logger_name)
 
     if logger.hasHandlers():
