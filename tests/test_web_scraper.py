@@ -60,6 +60,18 @@ def mock_connection() -> ConnectionSchema:
 
 
 @pytest.fixture
+def mock_connection_one_way() -> ConnectionSchema:
+    return ConnectionSchema(
+        one_way=True,
+        origin="VIE",
+        destination="LHR",
+        departure_date=date(year=2026, month=1, day=1),
+        max_stops=1,
+        max_duration_hours=3
+        )
+
+
+@pytest.fixture
 def dynamic_mock_connection():
     today = datetime.now().date()
     departure_date = today + timedelta(days=30)
@@ -75,12 +87,21 @@ def dynamic_mock_connection():
     )
 
 
-def test_generate_url_one_way(mock_connection: ConnectionSchema):
+def test_generate_url(mock_connection: ConnectionSchema):
     """Test that the URL generator formats one-way queries correctly."""
-    url, query = generate_google_flights_url(mock_connection, one_way=False)
+    url, query = generate_google_flights_url(mock_connection)
     assert "VIE" in query
     assert "LHR" in query
     assert url.startswith("http")
+
+
+def test_generate_url_one_way(mock_connection_one_way: ConnectionSchema):
+    """Test that the URL generator formats one-way queries correctly."""
+    url, query = generate_google_flights_url(mock_connection_one_way)
+    assert "VIE" in query
+    assert "LHR" in query
+    assert url.startswith("http")
+    assert url.endswith("oneway")
 
 
 def test_flight_data_filter(mock_flights: list[FlightSchema], mock_connection: ConnectionSchema):

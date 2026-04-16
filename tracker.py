@@ -1,53 +1,19 @@
-from datetime import timedelta, datetime
-from typing import Generator
+from datetime import datetime
 
 from logger import logger_setup
-from schemas import FlightSchema, SearchSchema, ConnectionSchema
+from schemas import FlightSchema, ConnectionSchema
 from db import Session, FlightDB, PriceListDB
 from search_manager import manage_searches
 from web_scraper import get_flight_data, get_price_list
 
 
-logger = logger_setup("tracker.log")
-
-
-def generate_date_combinations(search: SearchSchema) -> Generator[ConnectionSchema, None, None]:
-
-    # Convert strings to datetime objects
-    start_dt = search.earliest_departure
-    end_dt = search.latest_return
-
-    # The absolute latest someone could depart is (Latest Return - Min Stay)
-    latest_departure_possible = end_dt - timedelta(days=search.min_stay_days)
-
-    current_depart = start_dt
-    while current_depart <= latest_departure_possible:
-
-        for stay in range(search.min_stay_days, search.max_stay_days + 1):
-            current_return = current_depart + timedelta(days=stay)
-
-            # THE KEY CHECK: Ensure we aren't returning after our hard deadline
-            if current_return <= end_dt:
-                yield ConnectionSchema(
-                    origin=search.origin,
-                    destination=search.destination,
-                    departure_date=current_depart,
-                    return_date=current_return,
-                    stay_duration=stay,
-                    max_stops=search.max_stops,
-                    max_duration_hours=search.max_duration_hours
-                )
-            else:
-                break
-
-        current_depart += timedelta(days=1)
+logger = logger_setup("tracker.log", logger_name="tracker")
 
 
 def write_flights_to_db(
         session,
         flight_data: list[FlightSchema],
-        connection: ConnectionSchema,
-        search: SearchSchema
+        connection: ConnectionSchema
         ) -> None:
     """
     Converts list of FlightSchema to FlightDB objects and saves them to the database.
@@ -59,7 +25,7 @@ def write_flights_to_db(
     new_flights = [
         FlightDB(
             **flight.model_dump(exclude={"origin", "destination"}),
-            search_id=search.id,
+            search_id=connection.search_id,
             price_list_id=connection.id
         )
         for flight in flight_data
@@ -77,10 +43,11 @@ def write_flights_to_db(
 
 def write_price_list_to_db(
         session,
-        connection: ConnectionSchema,
-        search: SearchSchema
+        connection: ConnectionSchema
         ) -> ConnectionSchema:
-    new_connection = PriceListDB(price_list=connection.price_list, search_id=search.id)
+    new_connection = PriceListDB(
+        price_list=connection.price_list, search_id=connection.search_id
+        )
 
     try:
         session.add(new_connection)
@@ -91,6 +58,17 @@ def write_price_list_to_db(
         session.rollback()
         logger.error(f"Failed to save price snapshot to DB: {e}")
         raise
+
+
+def check_departure_date_in_past(connection: ConnectionSchema) -> bool:
+    dep_date_obj = connection.departure_date
+
+    if dep_date_obj < datetime.now().date():
+        logger.info(
+            f"Skipping connection. Departure date {connection.departure_date} is in the past."
+        )
+        return True
+    return False
 
 
 def run_tracker():
@@ -106,36 +84,24 @@ def run_tracker():
             logger.info(
                 f"Start search for {search.origin} -> {search.destination}..."
             )
-
-            connection_generator = generate_date_combinations(search)
-
-            n_combos = 0
-            for connection in connection_generator:
-                dep_date_obj = connection.departure_date
-
-                if dep_date_obj < datetime.now().date():
-                    logger.info(
-                        f"Skipping date combo. Departure date {connection.departure_date} is in the past."
-                    )
+            for connection in search.connections:
+                if check_departure_date_in_past(connection):
                     continue
 
                 connection = get_price_list(connection)
-                connection = write_price_list_to_db(SessionLocal, connection, search)
+                connection = write_price_list_to_db(SessionLocal, connection)
 
                 flight_data = get_flight_data(
                     connection=connection,
-                    one_way=False,
                     cheapest_flights=True,
                     more_flights=False,
-                    top_n=3,
+                    top_n=5,
                 )
-                write_flights_to_db(SessionLocal, flight_data, connection, search)
-
-                n_combos += 1
+                connection.flights = flight_data
+                write_flights_to_db(SessionLocal, flight_data, connection)
 
             logger.info(
-                f"Completed search for {search.origin} -> {search.destination}. "
-                f"Processed {n_combos} date combinations."
+                f"Completed search for {search.origin} -> {search.destination}."
             )
 
         logger.info("Flight-price-tracker run completed.")

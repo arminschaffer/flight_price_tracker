@@ -18,18 +18,15 @@ from schemas import ConnectionSchema, FlightSchema
 from logger import logger_setup
 
 
-logger = logger_setup("scraper.log")
+logger = logger_setup("scraper.log", logger_name="web_scraper")
 
 
-def generate_google_flights_url(
-        connection: ConnectionSchema,
-        one_way: bool = False
-        ) -> tuple[str, str]:
+def generate_google_flights_url(connection: ConnectionSchema) -> tuple[str, str]:
     """
     Generate google flight search url based on the connection details.
     """
 
-    if one_way or connection.return_date is None:
+    if connection.one_way:
         query = (
             f"Flights to {connection.destination} from {connection.origin} "
             f"on {connection.departure_date} oneway"
@@ -367,13 +364,12 @@ def flight_data_filter(
 
 def get_flight_data(
         connection: ConnectionSchema,
-        one_way: bool = False,
         cheapest_flights: bool = False,
         more_flights: bool = False,
         top_n: int | None = None
         ) -> list[FlightSchema]:
 
-    url, _ = generate_google_flights_url(connection, one_way)
+    url, _ = generate_google_flights_url(connection)
     scraper = GoogleFlightsScraper(headless=True)
     data = scraper.scrape_flights_with_retry(
         url, connection, cheapest_flights, more_flights
@@ -382,11 +378,10 @@ def get_flight_data(
 
 
 def get_price_list(
-        connection: ConnectionSchema,
-        one_way: bool = False,
+        connection: ConnectionSchema
         ) -> ConnectionSchema:
 
-    url, _ = generate_google_flights_url(connection, one_way)
+    url, _ = generate_google_flights_url(connection)
     scraper = GoogleFlightsScraper(headless=True)
     data = scraper.scrape_price_list(url)
     return ConnectionSchema(price_list=data, **connection.model_dump(exclude={"price_list"}))

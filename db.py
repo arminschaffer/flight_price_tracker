@@ -1,8 +1,8 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional
 
-from sqlalchemy import String, Integer, DateTime, JSON, ForeignKey, UniqueConstraint, create_engine
+from sqlalchemy import String, Integer, DateTime, Date, JSON, ForeignKey, UniqueConstraint, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
 
@@ -14,14 +14,17 @@ class SearchDB(Base):
     __tablename__ = 'searches'
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
     origin: Mapped[str] = mapped_column(String(100), nullable=False)
     destination: Mapped[str] = mapped_column(String(100), nullable=False)
+    earliest_departure: Mapped[date] = mapped_column(Date, nullable=False)
+    latest_departure: Mapped[date] = mapped_column(Date, nullable=False)
 
-    earliest_departure: Mapped[str] = mapped_column(String(10), nullable=False)
-    latest_return: Mapped[str] = mapped_column(String(10), nullable=False)
+    earliest_return: Mapped[date] = mapped_column(Date, nullable=True)
+    latest_return: Mapped[date] = mapped_column(Date, nullable=True)
+    min_stay_days: Mapped[int] = mapped_column(Integer, nullable=True)
+    max_stay_days: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    min_stay_days: Mapped[int] = mapped_column(Integer, default=7)
-    max_stay_days: Mapped[int] = mapped_column(Integer, default=14)
     max_stops: Mapped[int] = mapped_column(Integer, default=0)
     max_duration_hours: Mapped[int] = mapped_column(Integer, default=12)
 
@@ -58,7 +61,7 @@ class PriceListDB(Base):
     __tablename__ = 'price_list'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'))
+    search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'), nullable=False)
 
     price_list: Mapped[List[int]] = mapped_column(JSON, nullable=False)
     scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
@@ -71,17 +74,17 @@ class FlightDB(Base):
     __tablename__ = 'flights'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'))
-    price_list_id: Mapped[int] = mapped_column(ForeignKey('price_list.id'))
+    search_id: Mapped[int] = mapped_column(ForeignKey('searches.id'), nullable=False)
+    price_list_id: Mapped[int] = mapped_column(ForeignKey('price_list.id'), nullable=False)
 
     # Specifics of the actual flight found
     price: Mapped[int] = mapped_column(Integer, nullable=False)
     departure_date: Mapped[str] = mapped_column(String(10), nullable=False)
-    return_date: Mapped[Optional[str]] = mapped_column(String(10))
-    flight_time: Mapped[str] = mapped_column(String(30))
-    airline: Mapped[Optional[str]] = mapped_column(String(512))
-    stops: Mapped[Optional[int]] = mapped_column(Integer)
-    duration: Mapped[Optional[str]] = mapped_column(String)
+    return_date: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    flight_time: Mapped[str] = mapped_column(String(30), nullable=True)
+    airline: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    stops: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    duration: Mapped[Optional[str]] = mapped_column(String(15), nullable=True)
     scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     # Relationship back to the parent search

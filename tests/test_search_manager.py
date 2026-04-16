@@ -24,11 +24,14 @@ def mock_search() -> list[SearchSchema]:
     """Returns a mock SearchSchema object for testing."""
     return [
         SearchSchema(
+            one_way=False,
             origin="VIE",
             destination="LHR",
             earliest_departure=date(year=2026, month=1, day=1),
-            latest_return=date(year=2026, month=1, day=30)
-        )
+            latest_departure=date(year=2026, month=1, day=2),
+            earliest_return=date(year=2026, month=1, day=15),
+            latest_return=date(year=2026, month=1, day=30),
+            )
     ]
 
 
@@ -53,7 +56,9 @@ def test_create_search_existing_record(mock_db_session, mock_search):
         origin="VIE",
         destination="LHR",
         earliest_departure=date(year=2026, month=1, day=1),
-        latest_return=date(year=2026, month=1, day=30)
+        latest_departure=date(year=2026, month=1, day=2),
+        earliest_return=date(year=2026, month=1, day=15),
+        latest_return=date(year=2026, month=1, day=30),
         )
     mock_db_session.add(existing)
     mock_db_session.commit()
@@ -69,11 +74,14 @@ def test_create_search_existing_record(mock_db_session, mock_search):
 def test_create_search_new_record_with_existing_record(mock_db_session, mock_search):
     """Test that it returns the existing record without creating a duplicate."""
     # Pre-populate the DB
-    existing = SearchDB(origin="LHR",
-                        destination="VIE",
-                        earliest_departure=date(year=2026, month=3, day=1),
-                        latest_return=date(year=2026, month=3, day=30)
-                        )
+    existing = SearchDB(
+        origin="LHR",
+        destination="VIE",
+        earliest_departure=date(year=2026, month=1, day=1),
+        latest_departure=date(year=2026, month=1, day=2),
+        earliest_return=date(year=2026, month=1, day=15),
+        latest_return=date(year=2026, month=1, day=30),
+        )
     mock_db_session.add(existing)
     mock_db_session.commit()
 

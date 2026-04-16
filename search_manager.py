@@ -1,17 +1,18 @@
 import os
 import json
-from datetime import datetime
+import pandas as pd
+from datetime import datetime, timedelta
 from pydantic import TypeAdapter, ValidationError
 import gspread
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
 
 from db import SearchDB
-from schemas import SearchSchema
+from schemas import ConnectionSchema, SearchSchema
 from logger import logger_setup
 
 
-logger = logger_setup("search_manager.log")
+logger = logger_setup("search_manager.log", logger_name="search_manager")
 
 load_dotenv()
 
@@ -36,14 +37,17 @@ def read_searches_from_google_sheets(
     HEADERS_MAP = {
         "Timestamp": "created_at",
         "Origin": "origin",
-        "Destination": "destination",
         "Earliest Departure Date": "earliest_departure",
+        "Latest Departure Date": "latest_departure",
+        "Destination": "destination",
+        "Earliest Return Date": "earliest_return",
         "Latest Return Date": "latest_return",
-        "Minimum Duration": "min_stay_days",
-        "Maximum Duration": "max_stay_days",
-        "Maximum Number of Stops": "max_stops",
-        "Maximum Flight Duration": "max_duration_hours",
-        "Name": "created_by"
+        "Min Duration": "min_stay_days",
+        "Max Duration": "max_stay_days",
+        "Max Stops": "max_stops",
+        "Max Flight Duration": "max_duration_hours",
+        "Name": "created_by",
+        "Email": "email"
     }
 
     creds = Credentials.from_service_account_file(
@@ -66,8 +70,22 @@ def read_searches_from_google_sheets(
 
             for search_request in all_search_requests:
                 search_request = rename_dict_keys(search_request, HEADERS_MAP)
+                search_request.pop('email', None)  # remove email for now
+                search_request["one_way"] = False
 
                 # fill default values
+                if search_request.get("destination") == "":
+                    search_request["destination"] = None
+                if search_request.get("earliest_return") == "":
+                    search_request["earliest_return"] = None
+                    search_request["one_way"] = True
+                if search_request.get("latest_return") == "":
+                    search_request["latest_return"] = None
+                    search_request["one_way"] = True
+                if search_request.get("min_stay_days") == "":
+                    search_request["min_stay_days"] = None
+                if search_request.get("max_stay_days") == "":
+                    search_request["max_stay_days"] = None
                 if search_request.get("max_stops") == "":
                     search_request["max_stops"] = 0
                 if search_request.get("max_duration_hours") == "":
@@ -110,16 +128,15 @@ def read_searches_from_json(filepath: str = "searches.json") -> list[SearchSchem
 def write_searches_to_db(session, new_searches: list[SearchSchema]) -> None:
     for search in new_searches:
         try:
-            # Attempt to find the existing record
             instance = session.query(SearchDB).filter_by(
-                **search.model_dump(exclude={'id', 'created_at', 'created_by'})
-                ).first()
+                **search.model_dump(exclude={
+                    'id', 'created_at', 'created_by', 'connections', 'one_way'
+                    })).first()
 
             if instance:
                 pass
             else:
-                # If not found, create it using the same dictionary
-                instance = SearchDB(**search.model_dump())
+                instance = SearchDB(**search.model_dump(exclude={'connections', 'one_way'}))
                 session.add(instance)
                 session.flush()
                 logger.info(f"New search queued (ID: {instance.id}).")
@@ -142,6 +159,62 @@ def read_searches_from_db(session) -> list[SearchSchema]:
         return []
 
 
+def add_connections_to_search(search: SearchSchema) -> SearchSchema:
+    if search.one_way:
+        early_dep = search.earliest_departure
+        late_dep = search.latest_departure
+        current_dep = early_dep
+        while current_dep <= late_dep:
+            connection = ConnectionSchema(
+                search_id=search.id,
+                one_way=search.one_way,
+                origin=search.origin,
+                destination=search.destination,
+                departure_date=current_dep,
+                max_stops=search.max_stops,
+                max_duration_hours=search.max_duration_hours
+            )
+            current_dep += timedelta(days=1)
+        search.connections.append(connection)
+        return search
+
+    elif (search.earliest_return and search.latest_return):
+        early_dep = search.earliest_departure
+        late_dep = search.latest_departure
+        early_ret = search.earliest_return
+        late_ret = search.latest_return
+
+        departure_dates = pd.date_range(start=early_dep, end=late_dep)
+        return_dates = pd.date_range(start=early_ret, end=late_ret)
+
+        for dep in departure_dates:
+            for ret in return_dates:
+                stay_duration = (ret - dep).days
+                if (
+                    search.min_stay_days and search.max_stay_days
+                    and search.min_stay_days <= stay_duration <= search.max_stay_days
+                ):
+                    connection = ConnectionSchema(
+                        search_id=search.id,
+                        one_way=search.one_way,
+                        origin=search.origin,
+                        departure_date=dep,
+                        destination=search.destination,
+                        return_date=ret,
+                        stay_duration=stay_duration,
+                        max_stops=search.max_stops,
+                        max_duration_hours=search.max_duration_hours
+                    )
+                    search.connections.append(connection)
+        return search
+
+    else:
+        logger.error(
+            f"Search ID {search.id} has invalid parameters for generating connections."
+        )
+        raise
+
+
 def manage_searches(session, json_file: str = "searches.json", filter_past_searches: bool = True) -> list[SearchSchema]:
     # handle google sheet requests
     search_list = read_searches_from_google_sheets(delete_after_processing=True)
@@ -160,13 +233,17 @@ def manage_searches(session, json_file: str = "searches.json", filter_past_searc
     if filter_past_searches:
         today = datetime.now().date()
         searches = [search for search in searches if search.earliest_departure >= today]
+
+    # add connections to each search
+    searches = [add_connections_to_search(search) for search in searches]
+
     return searches
 
 
 def update_search_id(session, search: SearchSchema) -> SearchSchema:
     try:
         instance = session.query(SearchDB).filter_by(
-            **search.model_dump(exclude={'id', 'created_at', 'created_by'})
+            **search.model_dump(exclude={'id', 'created_at', 'created_by', 'one_way'})
             ).first()
 
         if not instance:
@@ -188,15 +265,15 @@ def get_or_create_search_entry(session, search: SearchSchema) -> SearchSchema:
     """
     # Attempt to find the existing record
     instance = session.query(SearchDB).filter_by(
-        **search.model_dump(exclude={'id', 'created_at', 'created_by'})
-        ).first()
+        **search.model_dump(exclude={
+            'id', 'created_at', 'created_by', 'connections', 'one_way'
+            })).first()
 
     if instance:
         logger.info(f"Search found in DB (ID: {instance.id}).")
         return SearchSchema(id=instance.id, **search.model_dump(exclude={'id'}))
     else:
-        # If not found, create it using the same dictionary
-        instance = SearchDB(**search.model_dump())
+        instance = SearchDB(**search.model_dump(exclude={'id', 'connections', 'one_way'}))
         session.add(instance)
         session.commit()
         session.refresh(instance)

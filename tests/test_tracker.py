@@ -24,9 +24,12 @@ def mock_db_session():
 def mock_search() -> SearchSchema:
     """Returns a mock SearchSchema object for testing."""
     return SearchSchema(
+        one_way=False,
         origin="VIE",
         destination="LHR",
         earliest_departure=date(year=2026, month=1, day=1),
+        latest_departure=date(year=2026, month=1, day=2),
+        earliest_return=date(year=2026, month=1, day=15),
         latest_return=date(year=2026, month=1, day=30),
     )
 
@@ -74,6 +77,8 @@ def mock_flights() -> list[FlightSchema]:
 def mock_connection() -> ConnectionSchema:
     return ConnectionSchema(
         id=1,
+        search_id=1,
+        one_way=False,
         origin="VIE",
         destination="LHR",
         departure_date=date(year=2026, month=1, day=1),
@@ -94,8 +99,8 @@ def test_write_flights_to_db_success(
     """Test that flights are correctly saved and linked to a search."""
 
     search_record = get_or_create_search_entry(mock_db_session, mock_search)
-    write_price_list_to_db(mock_db_session, mock_connection, search_record)
-    write_flights_to_db(mock_db_session, mock_flights, mock_connection, search_record)
+    write_price_list_to_db(mock_db_session, mock_connection)
+    write_flights_to_db(mock_db_session, mock_flights, mock_connection)
 
     # Check that 2 flights were saved
     saved_flights = mock_db_session.query(FlightDB).all()
@@ -116,26 +121,18 @@ def test_write_flights_to_db_success(
     assert saved_flight.stops == 3
 
 
-def test_write_flights_to_db_empty_list(
-        mock_db_session,
-        mock_search: SearchSchema,
-        mock_connection: ConnectionSchema
-        ):
+def test_write_flights_to_db_empty_list(mock_db_session, mock_connection: ConnectionSchema):
     """Test that the function handles an empty list gracefully."""
-    search_record = get_or_create_search_entry(mock_db_session, mock_search)
-
     # Should not raise an error or add anything to DB
-    write_flights_to_db(mock_db_session, [], mock_connection, search_record)
+    write_flights_to_db(mock_db_session, [], mock_connection)
 
     assert mock_db_session.query(FlightDB).count() == 0
 
 
-def test_write_price_snapshot_to_db(mock_db_session, mock_connection: ConnectionSchema, mock_search: SearchSchema):
+def test_write_price_snapshot_to_db(mock_db_session, mock_connection: ConnectionSchema):
     """Test that price snapshots are correctly saved and linked to a search."""
-    search_record = get_or_create_search_entry(mock_db_session, mock_search)
-
     # Should not raise an error or add anything to DB
-    _ = write_price_list_to_db(mock_db_session, mock_connection, search_record)
+    _ = write_price_list_to_db(mock_db_session, mock_connection)
 
     assert mock_db_session.query(PriceListDB).count() == 1
     assert mock_db_session.query(PriceListDB).first().price_list == mock_connection.price_list
