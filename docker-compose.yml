@@ -2,7 +2,7 @@ services:
   dashboard:
     build: .
     container_name: flight-price-dashboard
-    command: uv run app.py
+    command: uv run app/dash_app.py
     ports:
       - "8050:8050"
     volumes:
