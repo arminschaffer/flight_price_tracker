@@ -64,9 +64,9 @@ def read_searches_from_google_sheets(
         all_search_requests = sheet.get_all_records()
 
         if not all_search_requests:
-            logger.info("No new requests found")
+            logger.info("No requests found in Google Sheets.")
         else:
-            logger.info(f"{len(all_search_requests)} new request(s) found in Google Sheets.")
+            logger.info(f"{len(all_search_requests)} request(s) found in Google Sheets.")
 
             for search_request in all_search_requests:
                 search_request = rename_dict_keys(search_request, HEADERS_MAP)
@@ -98,6 +98,7 @@ def read_searches_from_google_sheets(
                 end_row = len(all_search_requests) + 1
 
                 sheet.delete_rows(start_row, end_row)
+                logger.info("Google Sheets requests cleared.")
 
     except gspread.exceptions.APIError as e:
         print(f"API Error (Check permissions/sharing): {e}")
@@ -217,7 +218,7 @@ def add_connections_to_search(search: SearchSchema) -> SearchSchema:
 
 def manage_searches(session, json_file: str = "searches.json", filter_past_searches: bool = True) -> list[SearchSchema]:
     # handle google sheet requests
-    search_list = read_searches_from_google_sheets(delete_after_processing=True)
+    search_list = read_searches_from_google_sheets(delete_after_processing=False)
 
     if search_list:
         write_searches_to_db(session, search_list)
