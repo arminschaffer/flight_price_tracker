@@ -18,13 +18,15 @@ schedule.every().day.at(schedule_time).do(run_tracker)
 
 
 def main():
+    logger.info("=== Starting flight-price-tracker ===")
+
     schedule_mode = bool(os.getenv("SCHEDULE_MODE") == "True")
 
     if schedule_mode:
         if datetime.now().time() > datetime.strptime(schedule_time, "%H:%M").time():
             logger.info(
                 f"Scheduled time {schedule_time} has already passed today. "
-                f"Running tracker immediately before scheduling."
+                f"Running flight price tracker immediately before scheduling."
             )
             run_tracker()
         logger.info("Scheduler active. Waiting...")
@@ -32,7 +34,7 @@ def main():
             schedule.run_pending()
             time.sleep(60)  # Check every minute
     else:
-        logger.info("Run price tracker once...")
+        logger.info("Run flight price tracker once...")
         run_tracker()
 
 

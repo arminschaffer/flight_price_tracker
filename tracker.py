@@ -72,15 +72,16 @@ def check_departure_date_in_past(connection: ConnectionSchema) -> bool:
 
 
 def run_tracker():
-    logger.info("=== Starting flight-price-tracker ===")
-
     try:
         # Setup DB session
         SessionLocal = Session()
 
         search_list = manage_searches(SessionLocal, "searches.json", filter_past_searches=True)
 
+        timer_tracker_start = datetime.now()
         for search in search_list:
+            timer_search_start = datetime.now()
+            logger.info("======================================")
             logger.info(
                 f"Start search for {search.origin} -> {search.destination}..."
             )
@@ -93,18 +94,19 @@ def run_tracker():
 
                 flight_data = get_flight_data(
                     connection=connection,
-                    cheapest_flights=True,
+                    cheapest_flights=False,
                     more_flights=False,
                     top_n=5,
                 )
                 connection.flights = flight_data
                 write_flights_to_db(SessionLocal, flight_data, connection)
 
+            time_search = datetime.now() - timer_search_start
             logger.info(
-                f"Completed search for {search.origin} -> {search.destination}."
+                f"Completed search for {search.origin} -> {search.destination} ({time_search})."
             )
-
-        logger.info("Flight-price-tracker run completed.")
+        time_tracker = datetime.now() - timer_tracker_start
+        logger.info(f"Flight-price-tracker run completed ({time_tracker}).")
 
     except Exception as e:
         logger.error(f"Scheduled task failed: {e}")
