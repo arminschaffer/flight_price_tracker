@@ -66,9 +66,22 @@ class Selectors:
 class GoogleFlightsScraper:
     def __init__(self, headless: bool = True):
         self.options = self._build_options(headless)
-        self.driver = self._init_driver()
-        self.wait = WebDriverWait(self.driver, 15)
-        self.wait_short = WebDriverWait(self.driver, 2)
+        self._driver = None
+
+    @property
+    def driver(self):
+        """Returns the current driver or starts a new one if needed."""
+        if self._driver is None:
+            self._driver = self._init_driver()
+        return self._driver
+
+    @property
+    def wait(self):
+        return WebDriverWait(self.driver, 15)
+
+    @property
+    def wait_short(self):
+        return WebDriverWait(self.driver, 2)
 
     def _build_options(self, headless: bool) -> Options:
         """Configures Chrome options for scraping."""
@@ -144,7 +157,7 @@ class GoogleFlightsScraper:
         """Extracts data from a single flight row."""
         airline = element.find_element(By.CSS_SELECTOR, Selectors.AIRLINE).text
         duration = element.find_element(By.CSS_SELECTOR, Selectors.DURATION).text
-        flight_time = element.find_element(By.CSS_SELECTOR, Selectors.FLIGHT_TIME).text
+        flight_time = element.find_element(By.CSS_SELECTOR, Selectors.FLIGHT_TIME).text.replace("\n", "")
         price_text = element.find_element(By.CSS_SELECTOR, Selectors.PRICE).text
 
         price = int(''.join(filter(str.isdigit, price_text)))
@@ -199,7 +212,9 @@ class GoogleFlightsScraper:
             logger.error(f"Critical error during scrape: {e}")
             return []
         finally:
-            self.driver.quit()
+            if self._driver:
+                self._driver.quit()
+                self._driver = None
 
     def scrape_flights_with_retry(
             self, url, connection, cheapest_flights=True, more_flights=False, max_retries=3
@@ -312,7 +327,9 @@ class GoogleFlightsScraper:
             logger.error(f"Critical error during price list scrape: {e}")
             return []
         finally:
-            self.driver.quit()
+            if self._driver:
+                self._driver.quit()
+                self._driver = None
 
 
 def parse_duration(duration_str: str) -> dt_time:
