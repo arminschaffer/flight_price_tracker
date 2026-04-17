@@ -50,12 +50,13 @@ class Selectors:
     CHEAPEST_TAB = "M7sBEb"
     MORE_TAB = "li.ZVk93d"
     # data selectors
-    FLIGHT_CARD = "li.pIav2d"
+    FLIGHT_CARD = 'div[role="tabpanel"][aria-labelledby="Oacf4b"] li[class="pIav2d"]'
     AIRLINE = ".sSHqwe"
     DURATION = ".gvkrdb"
     FLIGHT_TIME = ".zxVSec"
     STOPS = ".EfT7Ae"
-    PRICE = ".FpEdX span"
+    PRICE = ".YMlIz"
+    # PRICE = ".FpEdX span"  # old selector, seems to be more unstable
     # calender selectors
     DEPARTURE_INPUT = "//input[@placeholder='Departure']"
     NEXT_BTN = "button[jsname='KpyLEe']"
@@ -159,10 +160,9 @@ class GoogleFlightsScraper:
         duration = element.find_element(By.CSS_SELECTOR, Selectors.DURATION).text
         flight_time = element.find_element(By.CSS_SELECTOR, Selectors.FLIGHT_TIME).text.replace("\n", "")
         price_text = element.find_element(By.CSS_SELECTOR, Selectors.PRICE).text
+        stops_text = element.find_element(By.CSS_SELECTOR, Selectors.STOPS).text
 
         price = int(''.join(filter(str.isdigit, price_text)))
-
-        stops_text = element.find_element(By.CSS_SELECTOR, Selectors.STOPS).text
         stops = 0 if "Nonstop" in stops_text else int(stops_text.split(" ")[0])
 
         return FlightSchema(
@@ -194,16 +194,17 @@ class GoogleFlightsScraper:
 
             # Data Extraction
             flight_elements = self.wait.until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, Selectors.FLIGHT_CARD))
+                EC.visibility_of_all_elements_located((By.CSS_SELECTOR, Selectors.FLIGHT_CARD))
             )
+            logger.info(f"Found {len(flight_elements)} flight elements.")
 
             flights_data = []
             for element in flight_elements:
                 try:
                     flight = self._parse_flight_element(element, connection)
                     flights_data.append(flight)
-                except Exception:
-                    logger.warning("Failed to parse a flight entry, skipping.")
+                except Exception as e:
+                    logger.warning(f"Failed to parse a flight entry, skipping: {e}")
 
             logger.info(f"Found {len(flights_data)} flights.")
             return flights_data
@@ -217,7 +218,7 @@ class GoogleFlightsScraper:
                 self._driver = None
 
     def scrape_flights_with_retry(
-            self, url, connection, cheapest_flights=True, more_flights=False, max_retries=3
+            self, url, connection, cheapest_flights=False, more_flights=False, max_retries=3
             ) -> List[FlightSchema]:
         """Wraps the scraper with a retry loop."""
         # clean up any hanging processes before starting
@@ -273,7 +274,7 @@ class GoogleFlightsScraper:
                     self.driver.execute_script("arguments[0].click();", prev_btn)
                     i += 1
                     # Small buffer to prevent the browser from freezing
-                    time.sleep(0.25)
+                    time.sleep(0.1)
                 except Exception:
                     break
             logger.info(f"Clicked 'Previous' button {i} times.")
@@ -417,7 +418,7 @@ def main():
     search_url, encoded_query = generate_google_flights_url(connection)
 
     scraper = GoogleFlightsScraper(headless=True)
-    result = scraper.scrape_flights(search_url, connection, cheapest_flights=True, more_flights=True)
+    result = scraper.scrape_flights(search_url, connection, cheapest_flights=False, more_flights=True)
 
     filtered_flights = flight_data_filter(result, connection=connection)
 
