@@ -74,7 +74,7 @@ class FlightSchema(BaseModel):
     """Schema for specific flight data extracted from the web scraper"""
     origin: str
     destination: str
-    
+
     departure_date: date
 
     return_date: date | None = None
