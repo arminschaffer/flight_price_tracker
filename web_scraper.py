@@ -1,7 +1,7 @@
 import os
 import time
 import pandas as pd
-from datetime import date, time as dt_time
+from datetime import date, timedelta
 from typing import List
 import shutil
 import re
@@ -51,12 +51,12 @@ class Selectors:
     MORE_TAB = "li.ZVk93d"
     # data selectors
     FLIGHT_CARD = 'div[role="tabpanel"][aria-labelledby="Oacf4b"] li[class="pIav2d"]'
-    AIRLINE = ".sSHqwe"
+    AIRLINE = ".sSHqwe.tPgKwe.ogfYpf:not([aria-label])"
     DURATION = ".gvkrdb"
-    FLIGHT_TIME = ".zxVSec"
-    STOPS = ".EfT7Ae"
-    PRICE = ".YMlIz"
-    # PRICE = ".FpEdX span"  # old selector, seems to be more unstable
+    DEPARTURE_TIME = "span[aria-label^='Departure time']"
+    ARRIVAL_TIME = "span[aria-label^='Arrival time']"
+    STOPS = ".EfT7Ae .ogfYpf"
+    PRICE = ".U3gSDe span[role='text']"
     # calender selectors
     DEPARTURE_INPUT = "//input[@placeholder='Departure']"
     NEXT_BTN = "button[jsname='KpyLEe']"
@@ -116,6 +116,7 @@ class GoogleFlightsScraper:
         """Clears consent screens and initial pop-ups."""
         # Consent Screen
         try:
+            time.sleep(1)
             reject_xpath = Selectors.CONSENT_REJECT
             reject_btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, reject_xpath)))
             reject_btn.click()
@@ -156,16 +157,18 @@ class GoogleFlightsScraper:
 
     def _parse_flight_element(self, element, connection: ConnectionSchema) -> FlightSchema:
         """Extracts data from a single flight row."""
-        airline = element.find_element(By.CSS_SELECTOR, Selectors.AIRLINE).text
-        duration = element.find_element(By.CSS_SELECTOR, Selectors.DURATION).text
-        flight_time = element.find_element(By.CSS_SELECTOR, Selectors.FLIGHT_TIME).text.replace("\n", "")
-        price_text = element.find_element(By.CSS_SELECTOR, Selectors.PRICE).text
-        stops_text = element.find_element(By.CSS_SELECTOR, Selectors.STOPS).text
+        airline = element.find_element(By.CSS_SELECTOR, Selectors.AIRLINE).get_attribute('innerText')
+        duration = element.find_element(By.CSS_SELECTOR, Selectors.DURATION).get_attribute('innerText')
+        dep_time = element.find_element(By.CSS_SELECTOR, Selectors.DEPARTURE_TIME).get_attribute('innerText')
+        arr_time = element.find_element(By.CSS_SELECTOR, Selectors.ARRIVAL_TIME).get_attribute('innerText')
+        price_text = element.find_element(By.CSS_SELECTOR, Selectors.PRICE).get_attribute('innerText')
+        stops_text = element.find_element(By.CSS_SELECTOR, Selectors.STOPS).get_attribute('innerText')
 
+        flight_time = (f"{dep_time} - {arr_time}").replace('\u202f', ' ').strip()
         price = int(''.join(filter(str.isdigit, price_text)))
         stops = 0 if "Nonstop" in stops_text else int(stops_text.split(" ")[0])
 
-        return FlightSchema(
+        flight = FlightSchema(
             origin=connection.origin,
             destination=connection.destination,
             airline=airline,
@@ -176,6 +179,7 @@ class GoogleFlightsScraper:
             duration=duration,
             stops=stops
         )
+        return flight
 
     def scrape_flights(
             self,
@@ -193,9 +197,17 @@ class GoogleFlightsScraper:
             self._displayed_flights(cheapest_flights, more_flights)
 
             # Data Extraction
-            flight_elements = self.wait.until(
-                EC.visibility_of_all_elements_located((By.CSS_SELECTOR, Selectors.FLIGHT_CARD))
+            # Wait for flight cards to load
+            _ = self.wait.until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, Selectors.FLIGHT_CARD))
             )
+            # Buffer to ensure all elements are loaded
+            time.sleep(4)
+            # Scrape flight cards
+            flight_elements = self.wait.until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, Selectors.FLIGHT_CARD))
+            )
+
             logger.info(f"Found {len(flight_elements)} flight elements.")
 
             flights_data = []
@@ -274,7 +286,7 @@ class GoogleFlightsScraper:
                     self.driver.execute_script("arguments[0].click();", prev_btn)
                     i += 1
                     # Small buffer to prevent the browser from freezing
-                    time.sleep(0.1)
+                    time.sleep(0.25)
                 except Exception:
                     break
             logger.info(f"Clicked 'Previous' button {i} times.")
@@ -333,7 +345,7 @@ class GoogleFlightsScraper:
                 self._driver = None
 
 
-def parse_duration(duration_str: str) -> dt_time:
+def parse_duration(duration_str: str) -> timedelta:
     hours = re.search(r'(\d+) h', duration_str)
     minutes = re.search(r'(\d+) m', duration_str)
 
@@ -347,7 +359,7 @@ def parse_duration(duration_str: str) -> dt_time:
     else:
         minutes = 0
 
-    return dt_time(hour=hours, minute=minutes)
+    return timedelta(hours=hours, minutes=minutes)
 
 
 def flight_data_filter(
@@ -363,19 +375,26 @@ def flight_data_filter(
             try:
                 if flight.stops > connection.max_stops:
                     continue
-            except Exception:
-                continue  # Unable to parse stops, skip this flight
+            except Exception as e:
+                logger.warning(f"Error occurred while parsing stops for flight {flight}: {e}")
+                continue
 
         # Filter by max_duration
         if connection.max_duration_hours is not None:
             try:
                 total_duration = parse_duration(flight.duration)
-                if total_duration > dt_time(hour=connection.max_duration_hours, minute=0):
+
+                if total_duration > timedelta(hours=connection.max_duration_hours, minutes=0):
                     continue
-            except Exception:
-                continue  # Unable to parse duration, skip this flight
+            except Exception as e:
+                logger.warning(f"Error occurred while parsing duration for flight {flight}: {e}")
+                continue
 
         filtered_data.append(flight)
+
+    logger.info(
+        f"After filter {len(filtered_data)} flight(s) remain(s)."
+        )
 
     return filtered_data[:top_n] if top_n is not None else filtered_data
 
