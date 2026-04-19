@@ -11,6 +11,18 @@ DATABASE = "flight_database.db"
 engine = create_engine(f'sqlite:///{DATABASE}', echo=False)
 
 
+QUANTILES = [0., 0.01, 0.1, 0.25, 0.75, 0.9, 0.99, 1.]
+QUANTILE_COLORS = [
+    (1.00, 0.99, 'rgba(215, 48, 39, 0.7)'),     # Deep Red
+    (0.99, 0.90, 'rgba(244, 109, 67, 0.7)'),    # Light Red
+    (0.90, 0.75, 'rgba(253, 174, 97, 0.7)'),    # Orange-ish
+    (0.75, 0.25, 'rgba(200, 200, 200, 0.7)'),   # Grey
+    (0.25, 0.10, 'rgba(102, 189, 99, 0.7)'),    # Light Green
+    (0.10, 0.01, 'rgba(26, 152, 80, 0.7)'),     # Medium Green
+    (0.01, 0.00, 'rgba(0, 100, 0, 0.7)'),       # Deep Green
+    ]
+
+
 def mark_archived(df):
     today = pd.Timestamp.today().date()
 
@@ -174,24 +186,13 @@ def update_scatter(selected_route, selected_metrics, archived_flag, n):
         y_window_max = df_grouped.min().min() * 1.1
 
     if 'price_range' in selected_metrics:
-        q_list = [0., 0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 1.]
-        quantile_colors = [
-                (1.00, 0.99, 'rgba(215, 48, 39, 0.3)'),     # Deep Red
-                (0.99, 0.90, 'rgba(244, 109, 67, 0.3)'),    # Light Red
-                (0.90, 0.75, 'rgba(253, 174, 97, 0.3)'),    # Orange-ish
-                (0.75, 0.25, 'rgba(200, 200, 200, 0.4)'),   # Grey
-                (0.25, 0.10, 'rgba(102, 189, 99, 0.3)'),    # Light Green
-                (0.10, 0.01, 'rgba(26, 152, 80, 0.3)'),     # Medium Green
-                (0.01, 0.00, 'rgba(0, 100, 0, 0.3)'),       # Deep Green
-        ]
-
         df_temp['price_list'] = df_temp['price_list'].apply(
             lambda x: ast.literal_eval(x) if isinstance(x, str) else x
             )
         df_exp = df_temp.explode('price_list')
         df_exp['price_list'] = pd.to_numeric(df_exp['price_list'])
         df_range = df_exp.groupby('scraped_at')['price_list']
-        df_q = df_range.quantile(q_list).unstack().round()
+        df_q = df_range.quantile(QUANTILES).unstack().round()
 
         # extend axis for nicer plotting
         df_q_extended = df_q.copy()
@@ -215,7 +216,7 @@ def update_scatter(selected_route, selected_metrics, archived_flag, n):
             name='99th Percentile'
         ))
 
-        for upper, lower, color in quantile_colors:
+        for upper, lower, color in QUANTILE_COLORS:
             fig.add_trace(go.Scatter(
                 x=df_q_extended.index,
                 y=df_q_extended[lower],
@@ -328,16 +329,7 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
     filtered_df['return_date'] = pd.to_datetime(filtered_df['return_date'])
 
     # color based on quantiles
-    q_list = [0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 1.]
-    quantile_colors = [
-            (1.00, 0.99, 'rgba(215, 48, 39, 0.7)'),     # Deep Red
-            (0.99, 0.90, 'rgba(244, 109, 67, 0.7)'),    # Light Red
-            (0.90, 0.75, 'rgba(253, 174, 97, 0.7)'),    # Orange-ish
-            (0.75, 0.25, 'rgba(200, 200, 200, 0.7)'),   # Grey
-            (0.25, 0.10, 'rgba(102, 189, 99, 0.7)'),    # Light Green
-            (0.10, 0.01, 'rgba(26, 152, 80, 0.7)'),     # Medium Green
-            (0.01, 0.00, 'rgba(0, 100, 0, 0.7)'),       # Deep Green
-    ]
+    q_list = QUANTILES[1:]
 
     df_temp = filtered_df.copy()
     df_temp['scraped_at'] = pd.to_datetime(df_temp['scraped_at']).dt.date
@@ -353,15 +345,22 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
     levels = [df_q[q].squeeze() for q in q_list]
 
     # discrete color scale
-    num_colors = len(quantile_colors)
+    num_colors = len(QUANTILE_COLORS)
     custom_colorscale = []
 
-    for i, (_, _, color) in enumerate(quantile_colors[::-1]):
+    for i, (_, _, color) in enumerate(QUANTILE_COLORS[::-1]):
         custom_colorscale.append([i / num_colors, color])
         custom_colorscale.append([(i + 1) / num_colors, color])
 
+    # handling one way flights
+    if filtered_df['return_date'].isna().all():
+        pass
+
+    # handling return flights
     # create df for stay length
-    filtered_df['days_stayed'] = (filtered_df['return_date'] - filtered_df['departure_date']).dt.days
+    filtered_df['days_stayed'] = (
+        filtered_df['return_date'] - filtered_df['departure_date'] + pd.Timedelta(days=1)
+        ).dt.days
     stay_df = filtered_df.pivot_table(
         index='departure_date',
         columns='return_date',
@@ -399,11 +398,12 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
         airline_df = airline_df.reindex(index=all_departure_dates, columns=all_return_dates)
 
     # color scaling
-    z_indexed = np.digitize(z_df.values, levels) - 1
+    z_indexed = np.digitize(z_df.values, levels)
     z_indexed = np.where(np.isnan(z_df.values), np.nan, z_indexed)
 
     # create custom data for hover over info
-    custom_info = np.stack((stay_df.values, airline_df.values), axis=-1)
+    custom_info = np.stack((stay_df.values, airline_df.values, z_df.values), axis=-1)
+    print(custom_info)
 
     fig = go.Figure(data=go.Heatmap(
         z=z_indexed, x=z_df.columns, y=z_df.index,
@@ -420,7 +420,7 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
             "<b>Departure:</b> %{y|%d %b %Y}<br>" +
             "<b>Return:</b> %{x|%d %b %Y}<br>" +
             "<b>Stay:</b> %{customdata[0]} days<br>" +
-            "<b>Lowest Price:</b> €%{z:.0f}<br>" +
+            "<b>Lowest Price:</b> €%{customdata[2]:.0f}<br>" +
             "<b>Airline:</b> %{customdata[1]}<br>" +
             "<extra></extra>"
             ),
@@ -494,6 +494,9 @@ def update_return_options(selected_route, scrape_date, archived_flag):
                 (df['destination'] == dest) &
                 (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
             ]['return_date']).dt.date.unique(), reverse=True)
+
+    if pd.isna(relevant_flights).all():
+        return [], None
 
     options = [
         {'label': d.strftime('%d %b %Y'), 'value': str(d)} for d in relevant_flights
