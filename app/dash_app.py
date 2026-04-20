@@ -569,4 +569,4 @@ def update_table(selected_route, scrape_date, dep_date, ret_date, archived_flag,
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8050)
+    app.run(debug=True, host='0.0.0.0', port=8000)

@@ -4,7 +4,7 @@ services:
     container_name: flight-price-dashboard
     command: uv run app/dash_app.py
     ports:
-      - "8050:8050"
+      - "8000:8000"
     volumes:
       - ./flight_database.db:/app/flight_database.db:Z
     restart: always
