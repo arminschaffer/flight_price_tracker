@@ -446,7 +446,7 @@ def update_departure_options(selected_route, scrape_date, archived_flag):
         (df['destination'] == dest) &
         (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
     )
-    
+
     relevant_flights = df[mask]['departure_date'].dropna().unique()
     relevant_flights = sorted(pd.to_datetime(relevant_flights).date, reverse=True)
 
