@@ -216,7 +216,9 @@ def update_scatter(selected_route, selected_metrics, archived_flag, n):
             name='99th Percentile'
         ))
 
-        for upper, lower, color in QUANTILE_COLORS:
+        labels = ['>99%', '90-99%', '75-90%', '25-75%', '10-25%', '1-10%', '<1%']
+
+        for i, upper, lower, color in zip(range(len(QUANTILE_COLORS)), *zip(*QUANTILE_COLORS)):
             fig.add_trace(go.Scatter(
                 x=df_q_extended.index,
                 y=df_q_extended[lower],
@@ -225,10 +227,7 @@ def update_scatter(selected_route, selected_metrics, archived_flag, n):
                 line=dict(width=0),
                 hoverinfo='skip',
                 mode='lines',
-                name=(
-                    f'{str(int(lower*100))+"%" if lower > 0 else "Min"}-'
-                    f'{str(int(upper*100))+"%" if upper < 1 else "Max"}'
-                )
+                name=labels[i]
             ))
 
         y_window_min = df_q[0.01].min() * 0.9
@@ -323,28 +322,77 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
            (df['destination'] == dest) & \
            (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == selected_date)
 
-    # Filter the data
     filtered_df = df[mask].copy()
-    filtered_df['departure_date'] = pd.to_datetime(filtered_df['departure_date'])
-    filtered_df['return_date'] = pd.to_datetime(filtered_df['return_date'])
+    if filtered_df.empty:
+        return go.Figure()
 
-    # color based on quantiles
-    q_list = QUANTILES[1:]
+    filtered_df['departure_date'] = pd.to_datetime(filtered_df['departure_date']).dt.date
+    filtered_df['return_date'] = pd.to_datetime(filtered_df['return_date']).dt.date
 
+    is_one_way = filtered_df['return_date'].isna().all()
+
+    # Quantile based coloring
     df_temp = filtered_df.copy()
-    df_temp['scraped_at'] = pd.to_datetime(df_temp['scraped_at']).dt.date
-    df_temp['price_list'] = df_temp['price_list'].apply(
-        lambda x: ast.literal_eval(x) if isinstance(x, str) else x
-        )
+    df_temp['price_list'] = df_temp['price_list'].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
     df_exp = df_temp.explode('price_list')
     df_exp['price_list'] = pd.to_numeric(df_exp['price_list'])
-    df_range = df_exp.groupby('scraped_at')['price_list']
-    df_q = df_range.quantile(q_list).unstack().round()
+    q_list = QUANTILES[1:]
+    levels = df_exp['price_list'].quantile(q_list).values.round()
 
-    # bin levels for indexing
-    levels = [df_q[q].squeeze() for q in q_list]
+    if is_one_way:
+        filtered_df['row_label'] = "One-Way Price"
+        z_df = filtered_df.pivot_table(index='row_label', columns='departure_date', values='price', aggfunc='min')
+        airline_df = filtered_df.sort_values('price').pivot_table(
+            index='row_label', columns='departure_date', values='airline', aggfunc='first'
+            )
+        stay_df = z_df.copy().fillna(0)
 
-    # discrete color scale
+        y_axis_title = ""
+        x_axis_title = "Departure Date"
+        hover_template = (
+            "<b>Departure:</b> %{x|%d %b %Y}<br>" +
+            "<b>Price:</b> €%{customdata[2]:.0f}<br>" +
+            "<b>Airline:</b> %{customdata[1]}<br>" +
+            "<extra></extra>"
+        )
+    else:
+        filtered_df['days_stayed'] = (pd.to_datetime(filtered_df['return_date']) -
+                                      pd.to_datetime(filtered_df['departure_date'])).dt.days
+
+        z_df = filtered_df.pivot_table(
+            index='departure_date', columns='return_date', values='price', aggfunc='min'
+            )
+        stay_df = filtered_df.pivot_table(
+            index='departure_date', columns='return_date', values='days_stayed', aggfunc='first'
+            )
+        airline_df = filtered_df.sort_values('price').pivot_table(
+            index='departure_date', columns='return_date', values='airline', aggfunc='first'
+            )
+
+        y_axis_title = "Departure Date"
+        x_axis_title = "Return Date"
+        hover_template = (
+            "<b>Departure:</b> %{y|%d %b %Y}<br>" +
+            "<b>Return:</b> %{x|%d %b %Y}<br>" +
+            "<b>Stay:</b> %{customdata[0]} days<br>" +
+            "<b>Price:</b> €%{customdata[2]:.0f}<br>" +
+            "<b>Airline:</b> %{customdata[1]}<br>" +
+            "<extra></extra>"
+        )
+
+    # Fill date gaps
+    all_x_dates = pd.date_range(start=min(z_df.columns), end=max(z_df.columns)).date
+    z_df = z_df.reindex(columns=all_x_dates)
+    airline_df = airline_df.reindex(columns=all_x_dates)
+    stay_df = stay_df.reindex(columns=all_x_dates)
+
+    # Prepare Heatmap Data
+    z_values = z_df.values
+    z_indexed = np.digitize(z_values, levels)
+    z_indexed = np.where(np.isnan(z_values), np.nan, z_indexed)
+    custom_info = np.stack((stay_df.values, airline_df.values, z_values), axis=-1)
+
+    # Discrete color scale
     num_colors = len(QUANTILE_COLORS)
     custom_colorscale = []
 
@@ -352,89 +400,29 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
         custom_colorscale.append([i / num_colors, color])
         custom_colorscale.append([(i + 1) / num_colors, color])
 
-    # handling one way flights
-    if filtered_df['return_date'].isna().all():
-        pass
-
-    # handling return flights
-    # create df for stay length
-    filtered_df['days_stayed'] = (
-        filtered_df['return_date'] - filtered_df['departure_date'] + pd.Timedelta(days=1)
-        ).dt.days
-    stay_df = filtered_df.pivot_table(
-        index='departure_date',
-        columns='return_date',
-        values='days_stayed',
-        aggfunc='first'
-        )
-
-    # create an airline df
-    airline_df = filtered_df.sort_values('price').pivot_table(
-        index='departure_date',
-        columns='return_date',
-        values='airline',
-        aggfunc='first'
-        )
-
-    # Convert columns to date-only
-    filtered_df['departure_date'] = pd.to_datetime(filtered_df['departure_date']).dt.date
-    filtered_df['return_date'] = pd.to_datetime(filtered_df['return_date']).dt.date
-
-    # Pivot
-    z_df = filtered_df.pivot_table(
-        index='departure_date',
-        columns='return_date',
-        values='price',
-        aggfunc='min'
-        )
-
-    # add all dates within the range
-    if not z_df.empty:
-        all_departure_dates = pd.date_range(start=z_df.index.min(), end=z_df.index.max()).date
-        all_return_dates = pd.date_range(start=z_df.columns.min(), end=z_df.columns.max()).date
-
-        z_df = z_df.reindex(index=all_departure_dates, columns=all_return_dates)
-        stay_df = stay_df.reindex(index=all_departure_dates, columns=all_return_dates)
-        airline_df = airline_df.reindex(index=all_departure_dates, columns=all_return_dates)
-
-    # color scaling
-    z_indexed = np.digitize(z_df.values, levels)
-    z_indexed = np.where(np.isnan(z_df.values), np.nan, z_indexed)
-
-    # create custom data for hover over info
-    custom_info = np.stack((stay_df.values, airline_df.values, z_df.values), axis=-1)
-    print(custom_info)
-
     fig = go.Figure(data=go.Heatmap(
-        z=z_indexed, x=z_df.columns, y=z_df.index,
+        z=z_indexed,
+        x=z_df.columns,
+        y=z_df.index,
         customdata=custom_info,
-        # colorscale='RdYlGn_r',
         colorscale=custom_colorscale,
-        zmin=0,
-        zmax=num_colors,
-        zauto=False,
+        zmin=0, zmax=len(QUANTILE_COLORS),
         text=z_df.map(lambda x: f'€{x:.0f}' if pd.notnull(x) else "-").values,
         texttemplate="%{text}",
+        hovertemplate=hover_template,
         showscale=False,
-        hovertemplate=(
-            "<b>Departure:</b> %{y|%d %b %Y}<br>" +
-            "<b>Return:</b> %{x|%d %b %Y}<br>" +
-            "<b>Stay:</b> %{customdata[0]} days<br>" +
-            "<b>Lowest Price:</b> €%{customdata[2]:.0f}<br>" +
-            "<b>Airline:</b> %{customdata[1]}<br>" +
-            "<extra></extra>"
-            ),
-        xgap=5, ygap=5
+        xgap=2, ygap=2
     ))
 
     fig.update_layout(
-        xaxis_title="Return Date",
-        yaxis_title="Departure Date",
+        xaxis_title=x_axis_title,
+        yaxis_title=y_axis_title,
         plot_bgcolor="#f6f6f6",
         xaxis={'tickformat': '%d %b', 'dtick': 'D1', 'showgrid': False, 'tickangle': -45},
-        yaxis={'tickformat': '%d %b', 'dtick': 'D1', 'showgrid': False},
+        yaxis={'tickformat': '%d %b', 'dtick': 'D1', 'showgrid': False, 'showticklabels': not is_one_way},
         margin=dict(t=30, b=30, l=30, r=30)
     )
+
     return fig
 
 
@@ -447,12 +435,10 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
     Input('archive-toggle', 'value')
 )
 def update_departure_options(selected_route, scrape_date, archived_flag):
-    if not selected_route:
+    if not selected_route or not scrape_date:
         return [], None
 
     origin, dest = selected_route.split('|')
-    scrape_date = scrape_date
-    # Use the live data to find available dates for THIS specific route
     df = get_data(archived_flag)
 
     mask = (
@@ -460,15 +446,15 @@ def update_departure_options(selected_route, scrape_date, archived_flag):
         (df['destination'] == dest) &
         (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
     )
+    
+    relevant_flights = df[mask]['departure_date'].dropna().unique()
+    relevant_flights = sorted(pd.to_datetime(relevant_flights).date, reverse=True)
 
-    relevant_flights = sorted(
-        pd.to_datetime(
-            df[mask]['departure_date']).dt.date.unique(), reverse=True)
+    if not relevant_flights:
+        return [], None
 
-    options = [
-        {'label': d.strftime('%d %b %Y'), 'value': str(d)} for d in relevant_flights
-        ]
-    return options, options[0]['value'] if options else None
+    options = [{'label': d.strftime('%d %b %Y'), 'value': str(d)} for d in relevant_flights]
+    return options, options[0]['value']
 
 
 # Callback to update Return Dropdown options
@@ -480,28 +466,27 @@ def update_departure_options(selected_route, scrape_date, archived_flag):
     Input('archive-toggle', 'value')
 )
 def update_return_options(selected_route, scrape_date, archived_flag):
-    if not selected_route:
+    if not selected_route or not scrape_date:
         return [], None
 
     origin, dest = selected_route.split('|')
-    scrape_date = scrape_date
-    # Use the live data to find available dates for THIS specific route
     df = get_data(archived_flag)
-    relevant_flights = sorted(
-        pd.to_datetime(
-            df[
-                (df['origin'] == origin) &
-                (df['destination'] == dest) &
-                (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
-            ]['return_date']).dt.date.unique(), reverse=True)
 
-    if pd.isna(relevant_flights).all():
+    mask = (
+        (df['origin'] == origin) &
+        (df['destination'] == dest) &
+        (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
+    )
+
+    returns = df[mask]['return_date'].dropna().unique()
+
+    if len(returns) == 0:
         return [], None
 
-    options = [
-        {'label': d.strftime('%d %b %Y'), 'value': str(d)} for d in relevant_flights
-        ]
-    return options, options[0]['value'] if options else None
+    relevant_flights = sorted(pd.to_datetime(returns).date, reverse=True)
+    options = [{'label': d.strftime('%d %b %Y'), 'value': str(d)} for d in relevant_flights]
+
+    return options, options[0]['value']
 
 
 # Callback to update the Table (id='flights-table')
@@ -515,7 +500,7 @@ def update_return_options(selected_route, scrape_date, archived_flag):
     Input('interval-component', 'n_intervals')
 )
 def update_table(selected_route, scrape_date, dep_date, ret_date, archived_flag, n):
-    if not all([selected_route, scrape_date, dep_date, ret_date]):
+    if not all([selected_route, scrape_date, dep_date]):
         return go.Figure()
 
     origin, dest = selected_route.split('|')
@@ -526,43 +511,49 @@ def update_table(selected_route, scrape_date, dep_date, ret_date, archived_flag,
         (df['origin'] == origin) &
         (df['destination'] == dest) &
         (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date) &
-        (pd.to_datetime(df['departure_date']).dt.date.astype(str) == dep_date) &
-        (pd.to_datetime(df['return_date']).dt.date.astype(str) == ret_date)
+        (pd.to_datetime(df['departure_date']).dt.date.astype(str) == dep_date)
     )
 
-    table_df = df[mask].copy()
-    table_df['scraped_at'] = pd.to_datetime(table_df['scraped_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+    is_one_way = not ret_date
+    print(is_one_way)
 
-    # Sort by price ascending
+    if is_one_way:
+        mask &= df['return_date'].isna()
+    else:
+        mask &= (pd.to_datetime(df['return_date']).dt.date.astype(str) == ret_date)
+
+    table_df = df[mask].copy()
+
+    if table_df.empty:
+        return go.Figure()
+
+    table_df['scraped_at'] = pd.to_datetime(table_df['scraped_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
     table_df = table_df.sort_values(by='price', ascending=True)
+
+    header_values = ['<b>Airline</b>', '<b>Departure</b>', '<b>Time</b>']
+    cell_values = [table_df.airline, table_df.departure_date, table_df.flight_time]
+
+    if not is_one_way:
+        header_values.append('<b>Return</b>')
+        cell_values.append(table_df.return_date)
+
+    header_values += ['<b>Stops</b>', '<b>Duration</b>', '<b>Price</b>', '<b>Scraped at</b>']
+    cell_values += [
+        table_df.stops,
+        table_df.duration,
+        table_df.price.map('€{:,.2f}'.format),
+        table_df.scraped_at
+    ]
 
     # Create the Plotly Table
     fig = go.Figure(data=[go.Table(
         header=dict(
-            values=[
-                '<b>Airline</b>',
-                '<b>Departure</b>',
-                '<b>Departing Flight Time</b>',
-                '<b>Return</b>',
-                '<b>Stops</b>',
-                '<b>Duration</b>',
-                '<b>Price</b>',
-                '<b>Scraped at</b>'
-                ],
+            values=header_values,
             align='left',
             font=dict(size=12)
         ),
         cells=dict(
-            values=[
-                table_df.airline,
-                table_df.departure_date,
-                table_df.flight_time,
-                table_df.return_date,
-                table_df.stops,
-                table_df.duration,
-                table_df.price.map('€{:,.2f}'.format),
-                table_df.scraped_at
-            ],
+            values=cell_values,
             fill_color='lavender',
             align='left',
             font=dict(size=11)
