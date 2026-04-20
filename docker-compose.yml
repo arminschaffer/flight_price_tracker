@@ -16,6 +16,7 @@ services:
     volumes:
       - ./flight_database.db:/app/flight_database.db:Z
       - ./searches.json:/app/searches.json:Z
+      - ./google_credentials.json:/app/google_credentials.json:Z
       - ./tracker.log:/app/tracker.log:Z
       - ./scraper.log:/app/scraper.log:Z
       - ./search_manager.log:/app/search_manager.log:Z
