@@ -3,7 +3,12 @@ from datetime import date
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from search_manager import write_searches_to_db, read_searches_from_db, read_searches_from_json
+from search_manager import (
+    write_searches_to_db,
+    read_searches_from_db,
+    read_searches_from_json,
+    add_connections_to_search
+)
 from db import SearchDB, Base
 from schemas import SearchSchema
 
@@ -20,7 +25,7 @@ def mock_db_session():
 
 
 @pytest.fixture
-def mock_search() -> list[SearchSchema]:
+def mock_searches() -> list[SearchSchema]:
     """Returns a mock SearchSchema object for testing."""
     return [
         SearchSchema(
@@ -30,15 +35,30 @@ def mock_search() -> list[SearchSchema]:
             earliest_departure=date(year=2026, month=1, day=1),
             latest_departure=date(year=2026, month=1, day=2),
             earliest_return=date(year=2026, month=1, day=15),
-            latest_return=date(year=2026, month=1, day=30),
-            )
+            latest_return=date(year=2026, month=1, day=16),
+            min_stay_days=15,
+        )
     ]
 
 
-def test_create_search_new_record(mock_db_session, mock_search):
+@pytest.fixture
+def mock_one_way_searches() -> list[SearchSchema]:
+    """Returns a mock SearchSchema object for testing."""
+    return [
+        SearchSchema(
+            one_way=True,
+            origin="VIE",
+            destination="LHR",
+            earliest_departure=date(year=2026, month=1, day=1),
+            latest_departure=date(year=2026, month=1, day=4),
+        )
+    ]
+
+
+def test_create_search_new_record(mock_db_session, mock_searches):
     """Test that a record is created if it doesn't exist."""
 
-    write_searches_to_db(mock_db_session, mock_search)
+    write_searches_to_db(mock_db_session, mock_searches)
 
     searches = read_searches_from_db(mock_db_session)
 
@@ -49,7 +69,7 @@ def test_create_search_new_record(mock_db_session, mock_search):
     assert mock_db_session.query(SearchDB).count() == 1
 
 
-def test_create_search_existing_record(mock_db_session, mock_search):
+def test_create_search_existing_record(mock_db_session, mock_searches):
     """Test that it returns the existing record without creating a duplicate."""
     # Pre-populate the DB
     existing = SearchDB(
@@ -58,20 +78,22 @@ def test_create_search_existing_record(mock_db_session, mock_search):
         earliest_departure=date(year=2026, month=1, day=1),
         latest_departure=date(year=2026, month=1, day=2),
         earliest_return=date(year=2026, month=1, day=15),
-        latest_return=date(year=2026, month=1, day=30),
-        )
+        latest_return=date(year=2026, month=1, day=16),
+        min_stay_days=15,
+    )
     mock_db_session.add(existing)
     mock_db_session.commit()
 
-    write_searches_to_db(mock_db_session, mock_search)
+    write_searches_to_db(mock_db_session, mock_searches)
 
     searches = read_searches_from_db(mock_db_session)
 
     assert searches[0].id == existing.id
-    assert mock_db_session.query(SearchDB).count() == 1  # Still only one record
+    assert mock_db_session.query(
+        SearchDB).count() == 1  # Still only one record
 
 
-def test_create_search_new_record_with_existing_record(mock_db_session, mock_search):
+def test_create_search_new_record_with_existing_record(mock_db_session, mock_searches):
     """Test that it returns the existing record without creating a duplicate."""
     # Pre-populate the DB
     existing = SearchDB(
@@ -80,12 +102,13 @@ def test_create_search_new_record_with_existing_record(mock_db_session, mock_sea
         earliest_departure=date(year=2026, month=1, day=1),
         latest_departure=date(year=2026, month=1, day=2),
         earliest_return=date(year=2026, month=1, day=15),
-        latest_return=date(year=2026, month=1, day=30),
-        )
+        latest_return=date(year=2026, month=1, day=16),
+        min_stay_days=15,
+    )
     mock_db_session.add(existing)
     mock_db_session.commit()
 
-    write_searches_to_db(mock_db_session, mock_search)
+    write_searches_to_db(mock_db_session, mock_searches)
 
     searches = read_searches_from_db(mock_db_session)
 
@@ -103,3 +126,13 @@ def test_read_searches_from_json():
     assert searches[0].origin == "Vienna"
     assert searches[0].destination == "Lisbon"
     assert searches[1].destination == "Agadir"
+
+
+def test_add_connections_to_search(mock_searches):
+    search = add_connections_to_search(mock_searches[0])
+    assert len(search.connections) == 3
+
+
+def test_add_connections_to_one_way_search(mock_one_way_searches):
+    search = add_connections_to_search(mock_one_way_searches[0])
+    assert len(search.connections) == 4

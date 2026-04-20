@@ -120,14 +120,15 @@ def read_searches_from_json(filepath: str = "searches.json") -> list[SearchSchem
 
         # This one line validates every item in the list
         return TypeAdapter(list[SearchSchema]).validate_python(raw_data)
+        logger.info(f"{len(raw_data)} search(es) loaded from {filepath}.")
 
     except (json.JSONDecodeError, ValidationError) as e:
-        logger.error(f"Data loading failed in {filepath}: {e}")
+        logger.error(f"Loading searches from {filepath} failed: {e}")
         return []
 
 
-def write_searches_to_db(session, new_searches: list[SearchSchema]) -> None:
-    for search in new_searches:
+def write_searches_to_db(session, searches: list[SearchSchema]) -> None:
+    for search in searches:
         try:
             instance = session.query(SearchDB).filter_by(
                 **search.model_dump(exclude={
@@ -175,8 +176,8 @@ def add_connections_to_search(search: SearchSchema) -> SearchSchema:
                 max_stops=search.max_stops,
                 max_duration_hours=search.max_duration_hours
             )
+            search.connections.append(connection)
             current_dep += timedelta(days=1)
-        search.connections.append(connection)
         return search
 
     elif (search.earliest_return and search.latest_return):
@@ -190,10 +191,11 @@ def add_connections_to_search(search: SearchSchema) -> SearchSchema:
 
         for dep in departure_dates:
             for ret in return_dates:
-                stay_duration = (ret - dep).days
+                stay_duration = (ret - dep).days + timedelta(days=1).days
+
                 if (
-                    search.min_stay_days and search.max_stay_days
-                    and search.min_stay_days <= stay_duration <= search.max_stay_days
+                    (search.min_stay_days is None or stay_duration >= search.min_stay_days)
+                    and (search.max_stay_days is None or stay_duration <= search.max_stay_days)
                 ):
                     connection = ConnectionSchema(
                         search_id=search.id,
