@@ -1,45 +1,37 @@
 # 🛫 Flight Price Tracker
 
-A robust, automated Google Flights scraper built with Python, Selenium, and SQLAlchemy. It features a daily scheduler, structured logging, and smart "stealth" browser configurations to track flight prices without manual intervention.
+A robust, automated Google Flights scraper built with Python, Selenium, and SQLAlchemy. It features a daily scheduler, structured logging, and smart "stealth" browser configurations to track flight prices without manual intervention. It is further capable to process search requests from Google Forms.
 
 ## ✨ Features
 
-Daily Automation: Scheduled to run every day at 10:00 AM using the schedule library.
+Daily Automation: Scheduled to run every day.
 
 Smart Scraper: Handles Google consent screens, clears pop-up recommendations, and extracts flight data reliably.
 
-Structured Logging: Uses RotatingFileHandler to keep track of successes and errors without filling up your disk.
-
-High Performance: Optimized with uv for lightning-fast environment management and execution.
-
 Database Integration: Saves all scraped data into a structured format for long-term price analysis.
+
+External Requests: handles user track request via Google Forms.
+
+Tracker App: tracked prices can be accessed via a dashboard web app.
 
 ## 🚀 Getting Started
 
-### 1. Prerequisites
+### 1. Installation
 
-Ensure you have uv installed on your system:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### 2. Installation
-
-Clone the repository and sync the environment:
+Clone the repository:
 
 ```bash
 git clone https://github.com/arminschaffer/flight_price_tracker
 cd flight_price_tracker
 ```
 
-### 3. Create virtual environment and install dependencies
+### 2. Create virtual environment and install dependencies
 
 ```bash
 uv sync
 ```
 
-### 4. Configuration
+### 3. Configuration
 
 Create a searches.json file in the root directory to define the flights you want to track (e.g. searches_examples.json):
 
@@ -49,9 +41,11 @@ Create a searches.json file in the root directory to define the flights you want
     "origin": "VIE",
     "destination": "LHR",
     "earliest_departure": "2026-03-01",
-    "latest_return": "2026-03-10",
-    "min_stay_days": 3,
-    "max_stay_days": 7
+    "latest_departure": "2026-03-02",
+    "earliest_return": "2026-03-10",
+    "latest_return": "2026-03-11",
+    "min_stay_days": 10,
+    "max_stay_days": 10
   }
 ]
 ```
@@ -59,24 +53,10 @@ Create a searches.json file in the root directory to define the flights you want
 ## 🛠 Usage
 
 Run Manually
-To execute the scraper once immediately:
-
-```bash
-uv run main.py --now
-```
-
-Start the Scheduler
-To start the script in "Waiting" mode (it will run every day at 10:00):
+To execute the scraper:
 
 ```bash
 uv run main.py
-```
-
-Background Execution (Linux)
-To keep the scheduler running after you close your terminal:
-
-```bash
-nohup uv run main.py &
 ```
 
 ## 🦭📦 Using Docker (Raspberry Pi / Linux)
@@ -98,8 +78,12 @@ git clone https://github.com/arminschaffer/flight_price_tracker
 cd flight_price_tracker
 
 # Create empty files for volumes to prevent permission issues
-touch flight_databank.db searches.json tracker.log scraper.log
+touch flight_database.db searches.json logs/tracker.log logs/scraper.log logs/search_manager.log google_credentials.json .env
 ```
+
+Enter you all needed parameters to the .env file, similar to the .env.example file.
+
+Enter your Google Cloud credentials if you want to access automated request processing through Google Sheets.
 
 ### 3. Build and Run
 
@@ -119,19 +103,19 @@ This command performs the following:
 
 ## 📋 Monitoring
 
-The results can be viewed in a dash app by running the app.py. 
+The results can be viewed in a dash app by running the app.py.
 
 The project maintains a detailed log of all activities:
 
 - Terminal: Real-time progress updates.
 
-- tracker.log: A persistent record of searches and any errors (timeouts, missing elements).
-
-- scraper.log: Deep-dive logs from the Selenium driver.
+- separate log files for each process step
 
 ## 📂 Project Structure
 
 - main.py: Orchestrator and Scheduler.
+
+- search_manager.py: handles all the searches.
 
 - web_scraper.py: Selenium logic and Google Flights interaction.
 

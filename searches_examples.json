@@ -3,6 +3,8 @@
         "origin": "Vienna",
         "destination": "Lisbon",
         "earliest_departure": "2026-05-08",
+        "latest_departure": "2026-05-10",
+        "earliest_return": "2026-05-15",
         "latest_return": "2026-05-20",
         "min_stay_days": 7,
         "max_stay_days": 9,
@@ -11,12 +13,10 @@
     },
     {
         "origin": "Vienna",
-        "destination": "Agadir",
+        "destination": "London",
         "earliest_departure": "2026-02-14",
-        "latest_return": "2026-02-23",
-        "min_stay_days": 9,
-        "max_stay_days": 9,
+        "latest_departure": "2026-02-16",
         "max_stops": 0,
-        "max_duration_hours": 5
+        "max_duration_hours": 6
     }
 ]

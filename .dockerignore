@@ -11,6 +11,7 @@ env/
 
 # Ignore local database and logs (we use volumes for these)
 *.db
+*.csv
 *.log
 
 # Ignore local git history
@@ -22,3 +23,11 @@ env/
 
 # Ignore OS metadata
 .DS_Store
+
+# credentials & tokens
+google_credentials.json
+credentials.json
+token.json
+
+# operational searches file
+searches.json

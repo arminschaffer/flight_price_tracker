@@ -2,9 +2,11 @@ services:
   dashboard:
     build: .
     container_name: flight-price-dashboard
-    command: uv run app.py
+    environment:
+      TZ: "Europe/Vienna"
+    command: uv run app/dash_app.py
     ports:
-      - "8050:8050"
+      - "8000:8000"
     volumes:
       - ./flight_database.db:/app/flight_database.db:Z
     restart: always
@@ -12,11 +14,16 @@ services:
   tracker:
     build: .
     container_name: flight-price-tracker
+    environment:
+      TZ: "Europe/Vienna"
     command: uv run main.py
     volumes:
       - ./flight_database.db:/app/flight_database.db:Z
       - ./searches.json:/app/searches.json:Z
+      - ./google_credentials.json:/app/google_credentials.json:Z
       - ./tracker.log:/app/tracker.log:Z
       - ./scraper.log:/app/scraper.log:Z
+      - ./search_manager.log:/app/search_manager.log:Z
+    env_file:
+      - .env
     shm_size: 2gb
-    restart: on-failure
