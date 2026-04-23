@@ -2,6 +2,8 @@ services:
   dashboard:
     build: .
     container_name: flight-price-dashboard
+    environment:
+      TZ: "Europe/Vienna"
     command: uv run app/dash_app.py
     ports:
       - "8000:8000"
@@ -12,6 +14,8 @@ services:
   tracker:
     build: .
     container_name: flight-price-tracker
+    environment:
+      TZ: "Europe/Vienna"
     command: uv run main.py
     volumes:
       - ./flight_database.db:/app/flight_database.db:Z
