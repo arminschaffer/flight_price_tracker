@@ -356,8 +356,11 @@ def update_heatmap(selected_route, selected_date, archived_flag, n):
             "<extra></extra>"
         )
     else:
-        filtered_df['days_stayed'] = (pd.to_datetime(filtered_df['return_date']) -
-                                      pd.to_datetime(filtered_df['departure_date'])).dt.days
+        filtered_df['days_stayed'] = (
+            pd.to_datetime(filtered_df['return_date'])
+            - pd.to_datetime(filtered_df['departure_date'])
+            + pd.Timedelta(days=1)
+            ).dt.days
 
         z_df = filtered_df.pivot_table(
             index='departure_date', columns='return_date', values='price', aggfunc='min'
