@@ -26,4 +26,5 @@ services:
       - ./search_manager.log:/app/search_manager.log:Z
     env_file:
       - .env
+    init: true
     shm_size: 2gb

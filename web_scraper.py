@@ -98,6 +98,16 @@ class GoogleFlightsScraper:
             "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
+        # Aggressive cache management
+        options.add_argument("--disable-browser-side-navigation")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--disable-notifications")
+        options.add_argument("--disable-dev-tools")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-zygote")
+        options.add_argument("--single-process")
+        options.add_argument("--blink-settings=imagesEnabled=false")
+
         return options
 
     def _init_driver(self) -> Chrome:
