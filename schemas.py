@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class SearchSchema(BaseModel):
@@ -26,6 +26,38 @@ class SearchSchema(BaseModel):
     created_by: str = "admin"
 
     connections: list["ConnectionSchema"] = []
+
+    @field_validator('earliest_departure', 'latest_departure', 'earliest_return', 'latest_return', mode='before')
+    @classmethod
+    def parse_google_dates(cls, v):
+        if isinstance(v, (date, datetime)) or v is None or v == "":
+            return v if v != "" else None
+
+        if isinstance(v, str):
+            try:
+                return datetime.strptime(v, "%d/%m/%Y").date()
+            except ValueError:
+                return v
+        return v
+
+    @field_validator('created_at', mode='before')
+    @classmethod
+    def parse_google_timestamp(cls, v):
+        if v is None or v == "":
+            return datetime.now()
+
+        if isinstance(v, datetime):
+            return v
+
+        if isinstance(v, str):
+            try:
+                return datetime.strptime(v, "%d/%m/%Y %H:%M:%S")
+            except ValueError:
+                try:
+                    return datetime.strptime(v, "%d/%m/%Y %H:%M")
+                except ValueError:
+                    return v
+        return v
 
     @model_validator(mode='after')
     def check_return_fields(self) -> 'SearchSchema':
