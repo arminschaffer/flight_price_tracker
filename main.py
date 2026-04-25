@@ -27,9 +27,9 @@ def main():
         if datetime.now().time() > datetime.strptime(schedule_time, "%H:%M").time():
             logger.info(
                 f"Scheduled time {schedule_time} has already passed today. "
-                f"Do you want to run the flight price tracker immediately before scheduling?"
             )
             if late_scheduling_mode:
+                logger.info("Running tracker immediately due to late scheduling mode...")
                 run_tracker()
         logger.info("Scheduler active. Waiting...")
         while True:
