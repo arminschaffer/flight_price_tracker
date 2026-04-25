@@ -21,6 +21,7 @@ def main():
     logger.info("=== Starting flight-price-tracker ===")
 
     schedule_mode = bool(os.getenv("SCHEDULE_MODE") == "True")
+    late_scheduling_mode = bool(os.getenv("LATE_SCHEDULE_MODE") == "True")
 
     if schedule_mode:
         if datetime.now().time() > datetime.strptime(schedule_time, "%H:%M").time():
@@ -28,7 +29,7 @@ def main():
                 f"Scheduled time {schedule_time} has already passed today. "
                 f"Do you want to run the flight price tracker immediately before scheduling?"
             )
-            if input("y/n: ") == "y":
+            if late_scheduling_mode:
                 run_tracker()
         logger.info("Scheduler active. Waiting...")
         while True:
