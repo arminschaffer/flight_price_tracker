@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flight Price Tracker</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial; padding: 20px; background: #f0f2f5; margin: 0; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .row { display: flex; gap: 20px; margin-bottom: 15px; flex-wrap: wrap; }
+        .col { flex: 1; min-width: 300px; }
+        select, label { display: block; width: 100%; margin-bottom: 5px; }
+        select { padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-weight: normal; }
+        .graph-container { display: flex; gap: 20px; }
+        .chart { flex: 1; height: 450px; background: white; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+<div style="max-width: 1400px; margin: auto;">
+    <h1>✈️ Flight Price Tracker</h1>
+    
+    <div class="card">
+        <div class="row">
+            <div class="col">
+                <label><b>Route</b></label>
+                <select id="route-drop"></select>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col" style="flex: 0.2;">
+                <label><input type="checkbox" id="archive-toggle"> Show Archived Flights</label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <label><b>Lookup Date</b></label>
+                <select id="date-drop"></select>
+            </div>
+        </div>
+    </div>
+    
+    <div class="graph-container">
+        <div id="line-chart" class="chart card"></div>
+        <div id="heatmap" class="chart card"></div>
+    </div>
+
+    <div class="card"> 
+        <div class="row">
+            <div class="col">
+                <label><b>Departure Date</b></label>
+                <select id="dep-drop"></select>
+            </div>
+            <div class="col">
+                <label><b>Return Date</b></label>
+                <select id="ret-drop"></select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Available Offers</h3>
+        <div id="table-area"></div>
+    </div>
+</div>
+
+<script>
+    const API = window.location.origin;
+
+    async function fetchData(endpoint) {
+        const res = await fetch(`${API}${endpoint}`);
+        return await res.json();
+    }
+
+    async function init() {
+        const archived = document.getElementById('archive-toggle').checked;
+        const routes = await fetchData(`/routes?archived=${archived}`);
+        const rDrop = document.getElementById('route-drop');
+        rDrop.innerHTML = routes.map(r => `<option value="${r.value}">${r.label}</option>`).join('');
+        
+        rDrop.onchange = updateRoute;
+        document.getElementById('date-drop').onchange = updateSelection;
+        document.getElementById('archive-toggle').onchange = init;
+        document.getElementById('dep-drop').onchange = updateTable;
+        document.getElementById('ret-drop').onchange = updateTable;
+
+        updateRoute();
+    }
+
+    async function updateRoute() {
+        const route = document.getElementById('route-drop').value;
+        const dates = await fetchData(`/dates?route=${encodeURIComponent(route)}`);
+        const dDrop = document.getElementById('date-drop');
+        dDrop.innerHTML = dates.map((d, i) => `<option value="${d}">${d} ${i==0?'(latest)':''}</option>`).join('');
+        
+        renderLineChart();
+        updateSelection();
+    }
+
+    async function renderLineChart() {
+        const route = document.getElementById('route-drop').value;
+        const data = await fetchData(`/line-chart?route=${encodeURIComponent(route)}`);
+        
+        let traces = [];
+        const labels = ['>99%', '90-99%', '75-90%', '25-75%', '10-25%', '1-10%', '<1%'];
+        const qKeys = ["1.0", "0.99", "0.9", "0.75", "0.25", "0.1", "0.01", "0.0"];
+        const colors = [
+            'rgba(215, 48, 39, 0.7)',
+            'rgba(244, 109, 67, 0.7)',
+            'rgba(253, 174, 97, 0.7)',
+            'rgba(200, 200, 200, 0.7)',
+            'rgba(102, 189, 99, 0.7)',
+            'rgba(26, 152, 80, 0.7)',
+            'rgba(0, 100, 0, 0.7)'
+        ];
+
+        // Background Quantile Traces
+        traces.push({
+            x: data.x_q, y: data.quantiles[qKeys[0]],
+            fill: 'none',
+            line: {width: 0},
+            type: 'scatter', 
+            mode: 'lines', 
+            hoverinfo: 'skip', 
+            showlegend: false,
+        });
+
+        for(let i=0; i < qKeys.length - 1; i++) {
+            traces.push({
+                x: data.x_q, y: data.quantiles[qKeys[i+1]],
+                fill: 'tonexty',
+                fillcolor: colors[i],
+                line: {width: 0},
+                name: labels[i],
+                type: 'scatter', 
+                mode: 'lines', 
+                hoverinfo: 'skip'
+            });
+        }
+
+        // Min Price Line
+        traces.push({
+            x: data.x, y: data.min,
+            name: 'Min Price',
+            line: {color: '#495258', width: 3},
+            mode: 'lines+markers', 
+            type: 'scatter'
+        });
+
+        Plotly.newPlot('line-chart', traces, {
+            margin: {t:30, b:80, l:50, r:20},
+            hovermode: 'x unified',
+            xaxis: { 
+                tickformat: '%d %b', 
+                tickangle: -45, 
+                autorange: false,
+                fixedrange: false,
+                range: data.x_window,
+                tickmode: 'array',
+                tickvals: data.x_q
+            },
+            yaxis: { 
+                tickprefix: '€', 
+                autorange: false,
+                fixedrange: false,
+                range: data.y_window,
+            },
+            legend: {orientation: 'h', yanchor: "bottom", y: 1.05, xanchor: "left", x: 0.}
+        });
+    }
+
+    async function updateSelection() {
+        const route = document.getElementById('route-drop').value;
+        const date = document.getElementById('date-drop').value;
+        
+        const hm = await fetchData(`/heatmap?route=${encodeURIComponent(route)}&date=${date}`);
+        if (!hm || !hm.z) return;
+
+        const customData = hm.y.map((depDate, i) => 
+            hm.x.map((retDate, j) => {
+                const price = hm.original_z[i][j];
+                
+                const priceDisplay = (price !== null && price !== undefined) ? `€${Math.round(price)}` : "N/A";
+                
+                return [
+                    priceDisplay,
+                    hm.y[i],
+                    hm.x[j],
+                    hm.airline[i][j],
+                    hm.days_stayed[i][j]
+                ];
+            })
+        );
+
+        const colorscale = [];
+        hm.colors.forEach((c, i) => {
+            colorscale.push([i / hm.colors.length, c]);
+            colorscale.push([(i + 1) / hm.colors.length, c]);
+        });
+
+        const annotations = [];
+        for (let i = 0; i < hm.y.length; i++) {
+            for (let j = 0; j < hm.x.length; j++) {
+                const price = hm.original_z[i][j];
+                if (price !== null && price !== undefined) {
+                    annotations.push({
+                        x: hm.x[j],
+                        y: hm.y[i],
+                        text: `€${Math.round(price)}`,
+                        font: { color: 'black', size: 11 },
+                        showarrow: false
+                    });
+                }
+            }
+        }
+
+        const hmTrace = {
+            z: hm.z, 
+            x: hm.x, 
+            y: hm.y,
+            type: 'heatmap',
+            colorscale: colorscale,
+            showscale: false,
+            customdata: customData,
+            hovertemplate: hm.is_one_way ?
+                'Min Price: %{customdata[0]}' +
+                '<br>Return: %{customdata[2]|%d %b %Y}' +
+                '<br>Airline: %{customdata[3]}' +
+                '<extra></extra>' :
+                'Min Price: %{customdata[0]}' +
+                '<br>Departure: %{customdata[1]|%d %b %Y}' +
+                '<br>Return: %{customdata[2]|%d %b %Y}' +
+                '<br>Airline: %{customdata[3]}' +
+                '<br>Stay: %{customdata[4]} days' +
+                '<extra></extra>',
+            zmin: 0, 
+            zmax: hm.colors.length,
+            xgap: 2, 
+            ygap: 2
+        };
+
+        const layout = {
+            margin: { t: 20, b: 80, l: 80, r: 20 },
+            xaxis: { 
+                tickangle: -45, 
+                tickformat: '%d %b',
+                title: hm.is_one_way ? 'Departure Date' : 'Return Date',
+                showgrid: false,
+                tickmode: 'array',
+                tickvals: hm.x
+            },
+            yaxis: { 
+                tickformat: '%d %b',
+                title: hm.is_one_way ? '' : 'Departure Date',
+                showgrid: false,
+                showticklabels: hm.is_one_way ? false : true,
+                tickmode: 'array',
+                tickvals:  hm.is_one_way ? [] : hm.y
+            },
+            annotations: annotations
+        };
+
+        Plotly.newPlot('heatmap', [hmTrace], layout);
+
+        updateDropdowns(hm);
+        updateTable();
+    }
+
+    function updateDropdowns(hm) {
+        const depDrop = document.getElementById('dep-drop');
+        if (hm.is_one_way) {
+            depDrop.innerHTML = [...new Set(hm.x)].map(d => `<option value="${d}">${d}</option>`).join('');
+        } else {
+            depDrop.innerHTML = [...new Set(hm.y)].map(d => `<option value="${d}">${d}</option>`).join('');
+        }
+        
+        const retDrop = document.getElementById('ret-drop');
+        if (hm.is_one_way) {
+            retDrop.innerHTML = '<option value="null">One Way</option>';
+        } else {
+            retDrop.innerHTML = [...new Set(hm.x)].map(d => `<option value="${d}">${d}</option>`).join('');
+        }
+    }
+
+    async function updateTable() {
+        const route = document.getElementById('route-drop').value;
+        const sDate = document.getElementById('date-drop').value;
+        const dDate = document.getElementById('dep-drop').value;
+        const rDate = document.getElementById('ret-drop').value;
+
+        const flights = await fetchData(`/table?route=${encodeURIComponent(route)}&scrape_date=${sDate}&dep_date=${dDate}&ret_date=${rDate}`);
+        
+        let html = `<table><thead><tr><th>Airline</th><th>Time</th><th>Stops</th><th>Duration</th><th>Stay</th><th>Price</th></tr></thead><tbody>`;
+        flights.forEach(f => {
+            html += `<tr><td>${f.airline}</td><td>${f.flight_time}</td><td>${f.stops}</td><td>${f.duration}</td><td>${f.days_stayed} day(s)</td><td><b>€${f.price}</b></td></tr>`;
+        });
+        html += `</tbody></table>`;
+        document.getElementById('table-area').innerHTML = html;
+    }
+
+    init();
+</script>
+</body>
+</html>

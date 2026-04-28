@@ -518,7 +518,6 @@ def update_table(selected_route, scrape_date, dep_date, ret_date, archived_flag,
     )
 
     is_one_way = not ret_date
-    print(is_one_way)
 
     if is_one_way:
         mask &= df['return_date'].isna()
