@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 
 # --- Configuration ---
 DATABASE = "flight_database.db"
-PORT = 8050
+PORT = 8000
 QUANTILES = [0., 0.01, 0.1, 0.25, 0.75, 0.9, 0.99, 1.]
 QUANTILE_COLORS = [
     'rgba(215, 48, 39, 0.7)',       # Deep Red
