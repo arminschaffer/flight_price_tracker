@@ -98,6 +98,8 @@ def get_line_chart(route: str, archived: bool = False):
     df_exp = df_temp.explode('price_list')
     df_exp['price_list'] = pd.to_numeric(df_exp['price_list'])
     df_q = df_exp.groupby('scraped_at')['price_list'].quantile(np.array(QUANTILES)).unstack().round()
+    # If no range was found interpolate
+    df_q = df_q.interpolate().round()
 
     # Displayed y range
     y_window_min = df_q[0.01].min() * 0.9
@@ -128,6 +130,8 @@ def get_line_chart(route: str, archived: bool = False):
 
     for q in QUANTILES:
         res["quantiles"][str(q)] = df_q_extended[q].tolist()
+
+    print(res)
 
     return res
 
