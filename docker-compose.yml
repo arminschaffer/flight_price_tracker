@@ -4,7 +4,7 @@ services:
     container_name: flight-price-dashboard
     environment:
       TZ: "Europe/Vienna"
-    command: uv run app/dash_app.py
+    command: uv run uvicorn app.app:app --reload --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
     volumes:
