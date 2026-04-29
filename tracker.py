@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
 
 from logger import logger_setup
 from schemas import FlightSchema, ConnectionSchema
@@ -78,9 +79,9 @@ def run_tracker():
 
         search_list = manage_searches(SessionLocal, "searches.json", filter_past_searches=True)
 
-        timer_tracker_start = datetime.now()
+        timer_tracker_start = time.time()
         for search in search_list:
-            timer_search_start = datetime.now()
+            timer_search_start = time.time()
             logger.info("======================================")
             logger.info(
                 f"Start search for {search.origin} -> {search.destination}..."
@@ -101,11 +102,11 @@ def run_tracker():
                 connection.flights = flight_data
                 write_flights_to_db(SessionLocal, flight_data, connection)
 
-            time_search = datetime.now() - timer_search_start
+            time_search = str(timedelta(seconds=int(time.time() - timer_search_start)))
             logger.info(
                 f"Completed search for {search.origin} -> {search.destination} ({time_search})."
             )
-        time_tracker = datetime.now() - timer_tracker_start
+        time_tracker = str(timedelta(seconds=int(time.time() - timer_tracker_start)))
         logger.info(f"Flight-price-tracker run completed ({time_tracker}).")
 
     except Exception as e:
