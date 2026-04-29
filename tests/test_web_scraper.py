@@ -72,7 +72,7 @@ def mock_connection_one_way() -> ConnectionSchema:
 
 
 @pytest.fixture
-def dynamic_mock_connection():
+def dynamic_mock_connection() -> ConnectionSchema:
     today = datetime.now().date()
     departure_date = today + timedelta(days=30)
     return_date = today + timedelta(days=35)
@@ -81,9 +81,9 @@ def dynamic_mock_connection():
         destination="LHR",
         departure_date=departure_date,
         return_date=return_date,
-        stay_duration=5,
-        max_stops=1,
-        max_duration_hours=3
+        stay_duration=6,
+        max_stops=3,
+        max_duration_hours=12
     )
 
 
