@@ -87,7 +87,23 @@ def get_line_chart(route: str, archived: bool = False):
     df = get_processed_data(archived)
     df_temp = df[(df['origin'] == origin) & (df['destination'] == dest)].copy()
     df_temp['scraped_at'] = pd.to_datetime(df_temp['scraped_at']).dt.date
+
+    is_one_way = df_temp['return_date'].isna().all()
+
     df_grouped = df_temp.groupby('scraped_at')['price']
+
+    # Time series for each connection
+    if is_one_way:
+        df_grouped_con = df_temp.groupby(
+            ['scraped_at', 'departure_date']
+            )['price'].min().unstack(level='scraped_at').values
+    else:
+        df_grouped_con = df_temp.groupby(
+            ['scraped_at', 'departure_date', 'return_date']
+            )['price'].min().unstack(level='scraped_at').values
+    mask = np.isnan(df_grouped_con)
+    df_grouped_con = df_grouped_con.astype(object)
+    df_grouped_con[mask] = None
 
     # Displayed x range
     x_window_min = df_temp['scraped_at'].min() - pd.Timedelta(days=1)
@@ -121,7 +137,8 @@ def get_line_chart(route: str, archived: bool = False):
     res = {
         "x": sorted(df_temp['scraped_at'].unique().astype(str).tolist()),
         "min": df_grouped.min().tolist(),
-        "mean": df_grouped.mean().tolist(),
+        "mean": df_grouped.mean().round().tolist(),
+        "min_con": df_grouped_con.tolist(),
         "x_q": sorted(df_q_extended.index.astype(str).tolist()),
         "quantiles": {},
         "y_window": [y_window_min, y_window_max],
@@ -130,8 +147,6 @@ def get_line_chart(route: str, archived: bool = False):
 
     for q in QUANTILES:
         res["quantiles"][str(q)] = df_q_extended[q].tolist()
-
-    print(res)
 
     return res
 

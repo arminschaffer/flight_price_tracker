@@ -11,7 +11,24 @@
         select, label { display: block; width: 100%; margin-bottom: 5px; }
         select { padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-weight: normal; }
         .graph-container { display: flex; gap: 20px; }
-        .chart { flex: 1; height: 450px; background: white; border-radius: 8px; }
+        .chart { 
+            flex: 1; 
+            height: 450px; 
+            background: white; 
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #heatmap {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+        }
+        #heat-map-container .row {
+            flex: 0 0 auto; 
+            margin-bottom: 10px;
+        }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
         th { background: #f8f9fa; }
@@ -34,17 +51,27 @@
                 <label><input type="checkbox" id="archive-toggle"> Show Archived Flights</label>
             </div>
         </div>
-        <div class="row">
-            <div class="col">
-                <label><b>Lookup Date</b></label>
-                <select id="date-drop"></select>
-            </div>
-        </div>
     </div>
     
     <div class="graph-container">
-        <div id="line-chart" class="chart card"></div>
-        <div id="heatmap" class="chart card"></div>
+        <div id="line-chart-container" class="chart card" style="position: relative;">
+            <div id="line-controls" style="position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 5px; font-size: 0.8em; border: 1px solid #ddd;">
+                <label style="display: inline; margin-right: 10px;"><input type="checkbox" id="show-min" checked> Min</label>
+                <label style="display: inline; margin-right: 10px;"><input type="checkbox" id="show-mean" unchecked> Mean</label>
+                <label style="display: inline;"><input type="checkbox" id="show-all" unchecked> All</label>
+            </div>
+            <div id="line-chart" style="height: 100%;"></div>
+        </div>
+        <div id="heat-map-container" class="chart card">
+            <div class="row" style="flex: 0 1 auto; margin-bottom: 10px;">
+                <div class="col">
+                    <label><b>Lookup Date</b></label>
+                    <select id="date-drop"></select>
+                </div>
+            </div>
+            
+            <div id="heatmap"></div>
+        </div>
     </div>
 
     <div class="card"> 
@@ -86,6 +113,10 @@
         document.getElementById('dep-drop').onchange = updateTable;
         document.getElementById('ret-drop').onchange = updateTable;
 
+        ['show-min', 'show-mean', 'show-all'].forEach(id => {
+            document.getElementById(id).onchange = renderLineChart;
+        });
+
         updateRoute();
     }
 
@@ -101,6 +132,10 @@
 
     async function renderLineChart() {
         const route = document.getElementById('route-drop').value;
+        const showMin = document.getElementById('show-min').checked;
+        const showMean = document.getElementById('show-mean').checked;
+        const showAll = document.getElementById('show-all').checked;
+
         const data = await fetchData(`/line-chart?route=${encodeURIComponent(route)}`);
         
         let traces = [];
@@ -141,16 +176,49 @@
         }
 
         // Min Price Line
-        traces.push({
-            x: data.x, y: data.min,
-            name: 'Min Price',
-            line: {color: '#495258', width: 3},
-            mode: 'lines+markers', 
-            type: 'scatter'
-        });
+        if (showMin) {
+            traces.push({
+                x: data.x, y: data.min,
+                name: 'Min',
+                mode: 'lines+markers', 
+                line: {color: '#495258', width: 4},
+                marker: {size: 8},
+                type: 'scatter'
+            });
+        }
+
+        // Mean Price Line
+        if (showMean) {
+            traces.push({
+                x: data.x, y: data.mean,
+                name: 'Mean',
+                mode: 'lines+markers', 
+                line: {color: '#89949C', width: 3},
+                marker: {size: 6},
+                type: 'scatter'
+            });
+        }
+        
+        // Connection Price Lines
+        if (showAll) {
+            for(let i=0; i < data.min_con.length; i++) {
+                traces.push({
+                    x: data.x, 
+                    y: data.min_con[i],
+                    name: `Min ${i}`,
+                    mode: 'lines+markers', 
+                    line: {color: '#5b5c61', width: 2},
+                    marker: {size: 4},
+                    type: 'scatter',
+                    opacity: 0.2,
+                    hoverinfo: 'skip', 
+                    showlegend: false,
+                });
+            };
+        }
 
         Plotly.newPlot('line-chart', traces, {
-            margin: {t:30, b:80, l:50, r:20},
+            margin: {t:100, b:80, l:50, r:20},
             hovermode: 'x unified',
             xaxis: { 
                 tickformat: '%d %b', 
