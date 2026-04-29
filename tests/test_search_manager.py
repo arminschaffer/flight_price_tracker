@@ -1,5 +1,5 @@
 import pytest
-from datetime import date
+from datetime import datetime, date, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -42,16 +42,56 @@ def mock_searches() -> list[SearchSchema]:
 
 
 @pytest.fixture
-def mock_one_way_searches() -> list[SearchSchema]:
-    """Returns a mock SearchSchema object for testing."""
+def dynamic_mock_searches() -> list[SearchSchema]:
+    """Returns a mock SearchSchema with dynamic dates object for testing."""
+    today = datetime.now().date()
     return [
+        # Full future search
+        SearchSchema(
+            one_way=False,
+            origin="VIE",
+            destination="LHR",
+            earliest_departure=today + timedelta(days=30),
+            latest_departure=today + timedelta(days=31),
+            earliest_return=today + timedelta(days=35),
+            latest_return=today + timedelta(days=36),
+            min_stay_days=6,
+        ),
+        # Past date search
+        SearchSchema(
+            one_way=False,
+            origin="VIE",
+            destination="LHR",
+            earliest_departure=today - timedelta(days=1),
+            latest_departure=today + timedelta(days=1),
+            earliest_return=today + timedelta(days=5),
+            latest_return=today + timedelta(days=6),
+            max_stay_days=6,
+        )
+    ]
+
+
+@pytest.fixture
+def dynamic_mock_one_way_searches() -> list[SearchSchema]:
+    """Returns a mock one way SearchSchema with dynamic dates object for testing."""
+    today = datetime.now().date()
+    return [
+        # Full future search
         SearchSchema(
             one_way=True,
             origin="VIE",
             destination="LHR",
-            earliest_departure=date(year=2026, month=1, day=1),
-            latest_departure=date(year=2026, month=1, day=4),
-        )
+            earliest_departure=today + timedelta(days=30),
+            latest_departure=today + timedelta(days=31),
+        ),
+        # Past date search
+        SearchSchema(
+            one_way=True,
+            origin="VIE",
+            destination="LHR",
+            earliest_departure=today - timedelta(days=1),
+            latest_departure=today + timedelta(days=1),
+        ),
     ]
 
 
@@ -125,14 +165,23 @@ def test_read_searches_from_json():
     assert len(searches) == 2
     assert searches[0].origin == "Vienna"
     assert searches[0].destination == "Lisbon"
-    assert searches[1].destination == "Agadir"
+    assert searches[1].destination == "London"
 
 
-def test_add_connections_to_search(mock_searches):
-    search = add_connections_to_search(mock_searches[0])
-    assert len(search.connections) == 3
+def test_add_connections_to_search(dynamic_mock_searches):
+    searches = []
+    for mock_search in dynamic_mock_searches:
+        searches.append(add_connections_to_search(mock_search))
+    print(searches[1].connections)
+    assert len(searches) == 2
+    assert len(searches[0].connections) == 3
+    assert len(searches[1].connections) == 3
 
 
-def test_add_connections_to_one_way_search(mock_one_way_searches):
-    search = add_connections_to_search(mock_one_way_searches[0])
-    assert len(search.connections) == 4
+def test_add_connections_to_one_way_search(dynamic_mock_one_way_searches):
+    searches = []
+    for mock_search in dynamic_mock_one_way_searches:
+        searches.append(add_connections_to_search(mock_search))
+    assert len(searches) == 2
+    assert len(searches[0].connections) == 2
+    assert len(searches[1].connections) == 2

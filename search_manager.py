@@ -162,59 +162,78 @@ def read_searches_from_db(session) -> list[SearchSchema]:
 
 
 def add_connections_to_search(search: SearchSchema) -> SearchSchema:
-    if search.one_way:
-        early_dep = search.earliest_departure
-        late_dep = search.latest_departure
-        current_dep = early_dep
-        while current_dep <= late_dep:
-            connection = ConnectionSchema(
-                search_id=search.id,
-                one_way=search.one_way,
-                origin=search.origin,
-                destination=search.destination,
-                departure_date=current_dep,
-                max_stops=search.max_stops,
-                max_duration_hours=search.max_duration_hours
-            )
-            search.connections.append(connection)
-            current_dep += timedelta(days=1)
-        return search
+    try:
+        today = datetime.now().date()
+        if search.one_way:
+            early_dep = search.earliest_departure
+            late_dep = search.latest_departure
+            current_dep = max(early_dep, today)
+            while (current_dep <= late_dep):
+                connection = ConnectionSchema(
+                    search_id=search.id,
+                    one_way=search.one_way,
+                    origin=search.origin,
+                    destination=search.destination,
+                    departure_date=current_dep,
+                    max_stops=search.max_stops,
+                    max_duration_hours=search.max_duration_hours
+                )
+                search.connections.append(connection)
+                current_dep += timedelta(days=1)
 
-    elif (search.earliest_return and search.latest_return):
-        early_dep = search.earliest_departure
-        late_dep = search.latest_departure
-        early_ret = search.earliest_return
-        late_ret = search.latest_return
+            if len(search.connections) == 0:
+                logger.warning(f"No connections added for search ID {search.id}.")
 
-        departure_dates = pd.date_range(start=early_dep, end=late_dep)
-        return_dates = pd.date_range(start=early_ret, end=late_ret)
+            return search
 
-        for dep in departure_dates:
-            for ret in return_dates:
-                stay_duration = (ret - dep).days + timedelta(days=1).days
+        elif (search.earliest_return and search.latest_return):
+            early_dep = max(search.earliest_departure, today)
+            late_dep = search.latest_departure
+            early_ret = max(search.earliest_return, today)
+            late_ret = search.latest_return
 
-                if (
-                    (search.min_stay_days is None or stay_duration >= search.min_stay_days)
-                    and (search.max_stay_days is None or stay_duration <= search.max_stay_days)
-                ):
-                    connection = ConnectionSchema(
-                        search_id=search.id,
-                        one_way=search.one_way,
-                        origin=search.origin,
-                        departure_date=dep,
-                        destination=search.destination,
-                        return_date=ret,
-                        stay_duration=stay_duration,
-                        max_stops=search.max_stops,
-                        max_duration_hours=search.max_duration_hours
-                    )
-                    search.connections.append(connection)
-        return search
+            departure_dates = pd.date_range(start=early_dep, end=late_dep)
+            return_dates = pd.date_range(start=early_ret, end=late_ret)
 
-    else:
-        logger.error(
-            f"Search ID {search.id} has invalid parameters for generating connections."
-        )
+            for dep in departure_dates:
+                for ret in return_dates:
+                    if ret < dep:
+                        continue
+
+                    stay_duration = (ret - dep).days + timedelta(days=1).days
+
+                    if (
+                        (search.min_stay_days is None or stay_duration >= search.min_stay_days)
+                        and (search.max_stay_days is None or stay_duration <= search.max_stay_days)
+                    ):
+                        connection = ConnectionSchema(
+                            search_id=search.id,
+                            one_way=search.one_way,
+                            origin=search.origin,
+                            departure_date=dep,
+                            destination=search.destination,
+                            return_date=ret,
+                            stay_duration=stay_duration,
+                            max_stops=search.max_stops,
+                            max_duration_hours=search.max_duration_hours
+                        )
+                        search.connections.append(connection)
+
+            if len(search.connections) == 0:
+                logger.warning(f"No connections added for search ID {search.id}.")
+
+            return search
+
+        else:
+            logger.error(f"Search ID {search.id} has invalid parameters for generating connections.")
+            raise ValueError(
+                f"one_way flag (={search.one_way}) cannot be false with "
+                "earliest_return (={search.earliest_return}) or "
+                "latest_return (={search.latest_return}) being None."
+                )
+
+    except Exception as e:
+        logger.error(f"Search ID {search.id} has invalid parameters for generating connections: {e}.")
         raise
 
 
@@ -235,7 +254,7 @@ def manage_searches(session, json_file: str = "searches.json", filter_past_searc
 
     if filter_past_searches:
         today = datetime.now().date()
-        searches = [search for search in searches if search.earliest_departure >= today]
+        searches = [search for search in searches if search.latest_departure >= today]
 
     # add connections to each search
     searches = [add_connections_to_search(search) for search in searches]
