@@ -16,12 +16,12 @@ logger = logger_setup("tracker.log")
 
 def run_search_manager():
     with Session() as SessionLocal:
-        _ = manage_searches(SessionLocal, read_google_sheets=False)
+        _ = manage_searches(SessionLocal, read_google_sheets=True)
 
 
 def run_full_tracker():
     with Session() as SessionLocal:
-        searches = manage_searches(SessionLocal, read_google_sheets=False)
+        searches = manage_searches(SessionLocal, read_google_sheets=True)
         if searches:
             run_tracker(SessionLocal, searches)
 
