@@ -3,8 +3,7 @@ import time
 
 from logger import logger_setup
 from schemas import FlightSchema, ConnectionSchema
-from db import Session, FlightDB, PriceListDB
-from search_manager import manage_searches
+from db import FlightDB, PriceListDB
 from web_scraper import get_flight_data, get_price_list
 
 
@@ -72,17 +71,13 @@ def check_departure_date_in_past(connection: ConnectionSchema) -> bool:
     return False
 
 
-def run_tracker():
+def run_tracker(SessionLocal, searches):
     try:
-        # Setup DB session
-        SessionLocal = Session()
-
-        search_list = manage_searches(SessionLocal, "searches.json", filter_past_searches=True)
-
         timer_tracker_start = time.time()
-        for search in search_list:
+
+        for search in searches:
             timer_search_start = time.time()
-            logger.info("======================================")
+            logger.info("========================================")
             logger.info(
                 f"Start search for {search.origin} -> {search.destination}..."
             )

@@ -30,14 +30,16 @@ class SearchSchema(BaseModel):
     @field_validator('earliest_departure', 'latest_departure', 'earliest_return', 'latest_return', mode='before')
     @classmethod
     def parse_google_dates(cls, v):
-        if isinstance(v, (date, datetime)) or v is None or v == "":
-            return v if v != "" else None
-
+        if v is None or v == "":
+            return None
+        if isinstance(v, (date, datetime)):
+            return v
         if isinstance(v, str):
-            try:
-                return datetime.strptime(v, "%d/%m/%Y").date()
-            except ValueError:
-                return v
+            for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+                try:
+                    return datetime.strptime(v, fmt).date()
+                except ValueError:
+                    continue
         return v
 
     @field_validator('created_at', mode='before')
@@ -45,10 +47,8 @@ class SearchSchema(BaseModel):
     def parse_google_timestamp(cls, v):
         if v is None or v == "":
             return datetime.now()
-
         if isinstance(v, datetime):
             return v
-
         if isinstance(v, str):
             try:
                 return datetime.strptime(v, "%d/%m/%Y %H:%M:%S")
@@ -58,10 +58,28 @@ class SearchSchema(BaseModel):
                 except ValueError:
                     return v
         return v
+    
+    @model_validator(mode='after')
+    def check_dates(self) -> 'SearchSchema':
+        # Check if latest departureare not in past
+        today = date.today()
+        if self.latest_departure and self.latest_departure < today:
+            raise ValueError(f"Latest departure ({self.latest_departure}) cannot be in the past.")
+        
+        # Departure (earliest vs latest)
+        if self.earliest_departure > self.latest_departure:
+            raise ValueError(f"Earliest departure ({self.earliest_departure}) cannot be after latest departure ({self.latest_departure})")
+
+        # Return (earliest vs latest)
+        if self.earliest_return and self.latest_return:
+            if self.earliest_return > self.latest_return:
+                raise ValueError(f"Earliest return ({self.earliest_return}) cannot be after latest return ({self.latest_return})")
+
+        return self
 
     @model_validator(mode='after')
     def check_return_fields(self) -> 'SearchSchema':
-        if self.earliest_return is not None and self.latest_return is not None:
+        if self.earliest_return and self.latest_return:
             self.one_way = False
         if not self.one_way:
             required_fields = [

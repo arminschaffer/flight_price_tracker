@@ -7,7 +7,8 @@ from search_manager import (
     write_searches_to_db,
     read_searches_from_db,
     read_searches_from_json,
-    add_connections_to_search
+    add_connections_to_search,
+    delete_searches_from_db,
 )
 from db import SearchDB, Base
 from schemas import SearchSchema
@@ -32,10 +33,10 @@ def mock_searches() -> list[SearchSchema]:
             one_way=False,
             origin="VIE",
             destination="LHR",
-            earliest_departure=date(year=2026, month=1, day=1),
-            latest_departure=date(year=2026, month=1, day=2),
-            earliest_return=date(year=2026, month=1, day=15),
-            latest_return=date(year=2026, month=1, day=16),
+            earliest_departure=date(year=2100, month=6, day=1),
+            latest_departure=date(year=2100, month=6, day=2),
+            earliest_return=date(year=2100, month=6, day=15),
+            latest_return=date(year=2100, month=6, day=16),
             min_stay_days=15,
         )
     ]
@@ -115,10 +116,10 @@ def test_create_search_existing_record(mock_db_session, mock_searches):
     existing = SearchDB(
         origin="VIE",
         destination="LHR",
-        earliest_departure=date(year=2026, month=1, day=1),
-        latest_departure=date(year=2026, month=1, day=2),
-        earliest_return=date(year=2026, month=1, day=15),
-        latest_return=date(year=2026, month=1, day=16),
+        earliest_departure=date(year=2100, month=6, day=1),
+        latest_departure=date(year=2100, month=6, day=2),
+        earliest_return=date(year=2100, month=6, day=15),
+        latest_return=date(year=2100, month=6, day=16),
         min_stay_days=15,
     )
     mock_db_session.add(existing)
@@ -139,10 +140,10 @@ def test_create_search_new_record_with_existing_record(mock_db_session, mock_sea
     existing = SearchDB(
         origin="LHR",
         destination="VIE",
-        earliest_departure=date(year=2026, month=1, day=1),
-        latest_departure=date(year=2026, month=1, day=2),
-        earliest_return=date(year=2026, month=1, day=15),
-        latest_return=date(year=2026, month=1, day=16),
+        earliest_departure=date(year=2100, month=6, day=1),
+        latest_departure=date(year=2100, month=6, day=2),
+        earliest_return=date(year=2100, month=6, day=15),
+        latest_return=date(year=2100, month=6, day=16),
         min_stay_days=15,
     )
     mock_db_session.add(existing)
@@ -161,8 +162,8 @@ def test_create_search_new_record_with_existing_record(mock_db_session, mock_sea
 
 def test_read_searches_from_json():
     """Test that searches are correctly read from a JSON file."""
-    searches = read_searches_from_json("searches_examples.json")
-    assert len(searches) == 2
+    searches = read_searches_from_json("tests/test_searches.json")
+    assert len(searches) == 2  # 2 valid 1 not valid
     assert searches[0].origin == "Vienna"
     assert searches[0].destination == "Lisbon"
     assert searches[1].destination == "London"
@@ -185,3 +186,40 @@ def test_add_connections_to_one_way_search(dynamic_mock_one_way_searches):
     assert len(searches) == 2
     assert len(searches[0].connections) == 2
     assert len(searches[1].connections) == 2
+
+
+def test_delete_search_from_db(mock_db_session, mock_searches):
+    """Test that it deletes the existing record."""
+    # Pre-populate the DB
+    existing = [
+        SearchDB(
+            origin="VIE",
+            destination="LHR",
+            earliest_departure=date(year=2100, month=6, day=1),
+            latest_departure=date(year=2100, month=6, day=2),
+            earliest_return=date(year=2100, month=6, day=15),
+            latest_return=date(year=2100, month=6, day=16),
+            min_stay_days=15,
+            ),
+        SearchDB(
+            origin="LHR",
+            destination="VIE",
+            earliest_departure=date(year=2100, month=6, day=1),
+            latest_departure=date(year=2100, month=6, day=2),
+            earliest_return=date(year=2100, month=6, day=15),
+            latest_return=date(year=2100, month=6, day=16),
+            min_stay_days=15,
+            ),
+    ]
+    for s in existing:
+        mock_db_session.add(s)
+    mock_db_session.commit()
+
+    delete_searches_from_db(mock_db_session, mock_searches)
+
+    searches = read_searches_from_db(mock_db_session)
+
+    assert len(searches) == 1
+    assert mock_db_session.query(SearchDB).count() == 1  # Two records in db
+    assert searches[0].id == existing[1].id
+    assert searches[0].origin == "LHR"

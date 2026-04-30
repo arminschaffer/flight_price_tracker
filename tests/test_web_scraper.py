@@ -116,8 +116,9 @@ def test_scrape_execution(dynamic_mock_connection: ConnectionSchema):
     """Runs a live scrape to ensure the Chrome setup and extraction works."""
 
     test_url, _ = generate_google_flights_url(dynamic_mock_connection)
+
     scraper = GoogleFlightsScraper(headless=True)
-    results = scraper.scrape_flights(test_url, dynamic_mock_connection, cheapest_flights=True)
+    results = scraper.scrape_flights(test_url, dynamic_mock_connection, cheapest_flights=False)
 
     assert isinstance(results, list)
     assert type(results[0].price) is int
@@ -131,7 +132,7 @@ def test_price_list_scrape_execution(dynamic_mock_connection: ConnectionSchema):
     test_url, _ = generate_google_flights_url(dynamic_mock_connection)
     scraper = GoogleFlightsScraper(headless=True)
     results = scraper.scrape_price_list(test_url)
-    print(results)
+
     assert isinstance(results, list)
     assert len(results) > 0
     assert type(results[0]) is int

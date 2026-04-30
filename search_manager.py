@@ -17,6 +17,10 @@ logger = logger_setup("search_manager.log", logger_name="search_manager")
 load_dotenv()
 
 
+# class SearchList:
+
+
+
 def rename_dict_keys(d: dict, key_map: dict) -> dict:
     return {key_map.get(k, k): v for k, v in d.items() if k in key_map}
 
@@ -61,41 +65,30 @@ def read_searches_from_google_sheets(
     try:
         sheet = client.open_by_key(spreadsheet_id).sheet1
 
-        all_search_requests = sheet.get_all_records()
+        search_requests = sheet.get_all_records()
 
-        if not all_search_requests:
+        if not search_requests:
             logger.info("No requests found in Google Sheets.")
         else:
-            logger.info(f"{len(all_search_requests)} request(s) found in Google Sheets.")
+            logger.info(f"{len(search_requests)} request(s) found in Google Sheets.")
 
-            for search_request in all_search_requests:
-                search_request = rename_dict_keys(search_request, HEADERS_MAP)
-                search_request.pop('email', None)  # remove email for now
-                search_request["one_way"] = False
+            for search_request in search_requests:
+                try:
+                    search_request = rename_dict_keys(search_request, HEADERS_MAP)
+                    search_request.pop('email', None)  # remove email for now
+                    # search_request["one_way"] = False
 
-                # fill default values
-                if search_request.get("destination") == "":
-                    search_request["destination"] = None
-                if search_request.get("earliest_return") == "":
-                    search_request["earliest_return"] = None
-                    search_request["one_way"] = True
-                if search_request.get("latest_return") == "":
-                    search_request["latest_return"] = None
-                    search_request["one_way"] = True
-                if search_request.get("min_stay_days") == "":
-                    search_request["min_stay_days"] = None
-                if search_request.get("max_stay_days") == "":
-                    search_request["max_stay_days"] = None
-                if search_request.get("max_stops") == "":
-                    search_request["max_stops"] = 0
-                if search_request.get("max_duration_hours") == "":
-                    search_request["max_duration_hours"] = 12
+                    cleaned_data = {k: (v if v != "" else None) for k, v in search_request.items()}
 
-                search_list.append(SearchSchema(**search_request))
+                    search = SearchSchema.model_validate(cleaned_data)
+                    search_list.append(search)
+
+                except Exception as e:
+                    logger.error(f"Invalid search request {search_request}: {e}")
 
             if delete_after_processing:
                 start_row = 2
-                end_row = len(all_search_requests) + 1
+                end_row = len(search_requests) + 1
 
                 sheet.delete_rows(start_row, end_row)
                 logger.info("Google Sheets requests cleared.")
@@ -111,23 +104,69 @@ def read_searches_from_google_sheets(
 
 
 def read_searches_from_json(filepath: str = "searches.json") -> list[SearchSchema]:
+    search_list = []
+
     if not os.path.exists(filepath):
+        logger.warning(f"Search json file does not exist: {filepath}.")
         return []
 
     try:
         with open(filepath, "r") as f:
-            raw_data = json.load(f)
+            search_requests = json.load(f)
 
-        # This one line validates every item in the list
-        return TypeAdapter(list[SearchSchema]).validate_python(raw_data)
-        logger.info(f"{len(raw_data)} search(es) loaded from {filepath}.")
+        logger.info(f"{len(search_requests)} search(es) loaded from {filepath}.")
+        for search_request in search_requests:
+            try:
+                search = SearchSchema.model_validate(search_request)
+                search_list.append(search)
+            except Exception as e:
+                logger.error(f"Invalid search request {search_request}: {e}")
+        return search_list
 
     except (json.JSONDecodeError, ValidationError) as e:
         logger.error(f"Loading searches from {filepath} failed: {e}")
         return []
 
 
+def delete_searches_from_db(session, searches: list[SearchSchema]) -> None:
+    if not searches:
+        logger.info("No searches deleted.")
+        return
+
+    deleted_count = 0
+    for search in searches:
+        try:
+            instance = session.query(SearchDB).filter_by(
+                    **search.model_dump(exclude={
+                        'id', 'created_at', 'created_by', 'connections', 'one_way'
+                        })).first()
+
+            if instance:
+                session.delete(instance)
+                deleted_count += 1
+                logger.info(f"Marked search for deletion (ID: {instance.id}).")
+            else:
+                logger.warning(f"Search not found in DB, skipping deletion: {search}")
+        
+        except Exception as e:
+            logger.error(f"Error deleting search {search}: {e}")
+
+    # Commit the changes
+    if deleted_count > 0:
+        try:
+            session.commit()
+            logger.info(f"Successfully deleted {deleted_count} searches from DB.")
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to commit deletions: {e}")
+
+
 def write_searches_to_db(session, searches: list[SearchSchema]) -> None:
+    if not searches:
+        logger.info("No new searches added.")
+        return
+
+    added_count = 0
     for search in searches:
         try:
             instance = session.query(SearchDB).filter_by(
@@ -140,16 +179,20 @@ def write_searches_to_db(session, searches: list[SearchSchema]) -> None:
             else:
                 instance = SearchDB(**search.model_dump(exclude={'connections', 'one_way'}))
                 session.add(instance)
+                added_count += 1
                 session.flush()
                 logger.info(f"New search queued (ID: {instance.id}).")
         except Exception as e:
-            logger.error(f"Failed to process search {search}: {e}")
+            logger.error(f"Error adding search {search}: {e}")
+
     # commit new searches to DB
-    try:
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Final commit failed: {e}")
+    if added_count > 0:
+        try:
+            session.commit()
+            logger.info(f"Successfully added {added_count} searches from DB.")
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed final commit: {e}")      
 
 
 def read_searches_from_db(session) -> list[SearchSchema]:
@@ -237,24 +280,73 @@ def add_connections_to_search(search: SearchSchema) -> SearchSchema:
         raise
 
 
-def manage_searches(session, json_file: str = "searches.json", filter_past_searches: bool = True) -> list[SearchSchema]:
-    # handle google sheet requests
-    search_list = read_searches_from_google_sheets(delete_after_processing=False)
+def search_is_same(s1: SearchSchema, s2: SearchSchema) -> bool:
+    exclude_set = {'id', 'created_at', 'created_by', 'connections', 'one_way'}
+    
+    dict1 = s1.model_dump(exclude=exclude_set)
+    dict2 = s2.model_dump(exclude=exclude_set)
+    
+    return dict1 == dict2
 
-    if search_list:
-        write_searches_to_db(session, search_list)
 
-    # handle json file requests
-    search_list = read_searches_from_json(json_file)
+def sync_search_lists(
+        active_searches: list[SearchSchema], 
+        searches_db: list[SearchSchema]
+        ) -> tuple[list[SearchSchema], list[SearchSchema]]:
+    
+    new_searches = [
+        a for a in active_searches 
+        if not any(search_is_same(a, db) for db in searches_db)
+    ]
 
-    if search_list:
-        write_searches_to_db(session, search_list)
+    old_searches = [
+        db for db in searches_db 
+        if not any(search_is_same(db, a) for a in active_searches)
+    ]
 
+    return new_searches, old_searches
+
+
+def remove_expired_searches(searches: list[SearchSchema]) -> list[SearchSchema]:
+    today = datetime.now().date()
+    return [search for search in searches if search.latest_departure >= today]
+
+
+def manage_searches(
+        session, 
+        read_google_sheets: bool = True,
+        read_json: bool = True,
+        json_file: str = "searches.json"
+        ) -> list[SearchSchema]:
+    
+    # Load active searches
+    active_searches = []
+    if read_google_sheets:
+        active_searches.extend(read_searches_from_google_sheets(delete_after_processing=False))
+    if read_json:
+        active_searches.extend(read_searches_from_json(json_file))
+
+    active_searches = remove_expired_searches(active_searches)
+
+    # Load searches from db
+    searches_db = read_searches_from_db(session)
+
+    # Find new searches and no longer active ones
+    searches_to_add, searches_to_delete = sync_search_lists(active_searches, searches_db)
+
+    # Delete searches
+    delete_searches_from_db(session, searches_to_delete)
+
+    # Write new searches to db
+    write_searches_to_db(session, searches_to_add)
+
+    # Read all active searches from dn
     searches = read_searches_from_db(session)
-
-    if filter_past_searches:
-        today = datetime.now().date()
-        searches = [search for search in searches if search.latest_departure >= today]
+    
+    # No searches
+    if not searches:
+        logger.warning("No searches found.")
+        return []
 
     # add connections to each search
     searches = [add_connections_to_search(search) for search in searches]
@@ -304,5 +396,5 @@ def get_or_create_search_entry(session, search: SearchSchema) -> SearchSchema:
 
 
 if __name__ == "__main__":
-    # quick google sheet test run
+    # Google sheet test run
     print(read_searches_from_google_sheets(delete_after_processing=False))

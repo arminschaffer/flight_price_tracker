@@ -88,8 +88,7 @@ class GoogleFlightsScraper:
         """Configures Chrome options for scraping."""
         options = Options()
         options.page_load_strategy = 'eager'
-        if headless:
-            options.add_argument("--headless")
+
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -98,15 +97,17 @@ class GoogleFlightsScraper:
             "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
-        # Aggressive cache management
-        options.add_argument("--disable-browser-side-navigation")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--disable-notifications")
-        options.add_argument("--disable-dev-tools")
-        options.add_argument("--no-first-run")
-        options.add_argument("--no-zygote")
-        options.add_argument("--single-process")
-        options.add_argument("--blink-settings=imagesEnabled=false")
+        if headless:
+            options.add_argument("--headless")
+            # Aggressive cache management
+            options.add_argument("--disable-dev-tools")
+            options.add_argument("--disable-browser-side-navigation")
+            options.add_argument("--disable-infobars")
+            options.add_argument("--disable-notifications")
+            options.add_argument("--no-first-run")
+            options.add_argument("--no-zygote")
+            options.add_argument("--single-process")
+            options.add_argument("--blink-settings=imagesEnabled=false")
 
         return options
 
@@ -148,6 +149,8 @@ class GoogleFlightsScraper:
 
     def _displayed_flights(self, cheapest: bool = False, more: bool = False):
         """Applies sorting and expansion filters."""
+
+        # !Cheapest option is bugged because the flight card CSS changes!
         if cheapest:
             try:
                 cheapest_btn = self.wait.until(EC.element_to_be_clickable((By.ID, Selectors.CHEAPEST_TAB)))

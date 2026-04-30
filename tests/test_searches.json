@@ -1,0 +1,30 @@
+[
+    {
+        "origin": "Vienna",
+        "destination": "Lisbon",
+        "earliest_departure": "2100-05-08",
+        "latest_departure": "2100-05-10",
+        "earliest_return": "2100-05-15",
+        "latest_return": "2100-05-20",
+        "min_stay_days": 7,
+        "max_stay_days": 9,
+        "max_stops": 0,
+        "max_duration_hours": 5
+    },
+    {
+        "origin": "Vienna",
+        "destination": "London",
+        "earliest_departure": "2100-02-14",
+        "latest_departure": "2100-02-16",
+        "max_stops": 0,
+        "max_duration_hours": 6
+    },
+    {
+        "origin": "London",
+        "destination": "Vienna",
+        "earliest_departure": "2000-02-14",
+        "latest_departure": "2000-02-16",
+        "max_stops": 0,
+        "max_duration_hours": 6
+    }
+]
