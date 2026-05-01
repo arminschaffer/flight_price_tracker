@@ -78,7 +78,7 @@ def read_searches_from_google_sheets(
                     search_request.pop('email', None)  # remove email for now
                     # search_request["one_way"] = False
 
-                    cleaned_data = {k: (v if v != "" else None) for k, v in search_request.items()}
+                    cleaned_data = {k: v for k, v in search_request.items() if v != ""}
 
                     search = SearchSchema.model_validate(cleaned_data)
                     search_list.append(search)
