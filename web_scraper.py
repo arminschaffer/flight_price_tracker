@@ -384,24 +384,21 @@ def flight_data_filter(
 
     for flight in flights_data:
         # Filter by max_stops
-        if connection.max_stops is not None:
-            try:
-                if flight.stops > connection.max_stops:
-                    continue
-            except Exception as e:
-                logger.warning(f"Error occurred while parsing stops for flight {flight}: {e}")
+        try:
+            if connection.max_stops and flight.stops > connection.max_stops:
                 continue
+        except Exception as e:
+            logger.warning(f"Error occurred while parsing stops for flight {flight}: {e}")
+            continue
 
         # Filter by max_duration
-        if connection.max_duration_hours is not None:
-            try:
-                total_duration = parse_duration(flight.duration)
-
-                if total_duration > timedelta(hours=connection.max_duration_hours, minutes=0):
-                    continue
-            except Exception as e:
-                logger.warning(f"Error occurred while parsing duration for flight {flight}: {e}")
+        try:
+            total_duration = parse_duration(flight.duration)
+            if connection.max_duration_hours and total_duration > timedelta(hours=connection.max_duration_hours, minutes=0):
                 continue
+        except Exception as e:
+            logger.warning(f"Error occurred while parsing duration for flight {flight}: {e}")
+            continue
 
         filtered_data.append(flight)
 

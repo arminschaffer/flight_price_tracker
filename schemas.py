@@ -19,8 +19,8 @@ class SearchSchema(BaseModel):
     min_stay_days: int | None = None
     max_stay_days: int | None = None
 
-    max_stops: int = 0
-    max_duration_hours: int = 12
+    max_stops: int | None = None
+    max_duration_hours: int | None = None
 
     created_at: datetime = Field(default_factory=datetime.now)
     created_by: str = "admin"
@@ -62,7 +62,6 @@ class SearchSchema(BaseModel):
     @field_validator('max_stops', 'max_duration_hours', mode='before')
     @classmethod
     def empty_string_to_default(cls, v, info):
-        # If the input is an empty string, return the default value for that field
         if v == "":
             return cls.model_fields[info.field_name].default
         return v
@@ -120,8 +119,8 @@ class ConnectionSchema(BaseModel):
     return_date: date | None = None
     stay_duration: int | None = None
 
-    max_stops: int = 0
-    max_duration_hours: int = 12
+    max_stops: int | None = None
+    max_duration_hours: int | None = None
 
     price_list: list[int] | None = None
 
