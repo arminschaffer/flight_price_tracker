@@ -197,12 +197,17 @@ def write_searches_to_db(session, searches: list[SearchSchema]) -> None:
 
 def read_searches_from_db(session) -> list[SearchSchema]:
     try:
+        search_list = []
         search_records = session.query(SearchDB).all()
-        return [SearchSchema.model_validate(record.__dict__) for record in search_records]
+        for search_record in search_records:
+            try:
+                search_list.append(SearchSchema.model_validate(search_record.__dict__))
+            except Exception as e:
+                logger.warning(f"Search in DB could not be loaded: {e}.")
+        return search_list
     except Exception as e:
         logger.error(f"Failed to read searches from DB: {e}")
         return []
-
 
 def add_connections_to_search(search: SearchSchema) -> SearchSchema:
     try:
