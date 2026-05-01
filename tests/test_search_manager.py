@@ -167,6 +167,8 @@ def test_read_searches_from_json():
     assert searches[0].origin == "Vienna"
     assert searches[0].destination == "Lisbon"
     assert searches[1].destination == "London"
+    assert searches[1].max_stops == 0
+    assert searches[1].max_duration_hours == 12
 
 
 def test_add_connections_to_search(dynamic_mock_searches):

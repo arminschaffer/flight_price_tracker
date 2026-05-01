@@ -16,8 +16,8 @@
         "destination": "London",
         "earliest_departure": "2100-02-14",
         "latest_departure": "2100-02-16",
-        "max_stops": 0,
-        "max_duration_hours": 6
+        "max_stops": "",
+        "max_duration_hours": ""
     },
     {
         "origin": "London",

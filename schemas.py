@@ -59,9 +59,17 @@ class SearchSchema(BaseModel):
                     return v
         return v
     
+    @field_validator('max_stops', 'max_duration_hours', mode='before')
+    @classmethod
+    def empty_string_to_default(cls, v, info):
+        # If the input is an empty string, return the default value for that field
+        if v == "":
+            return cls.model_fields[info.field_name].default
+        return v
+    
     @model_validator(mode='after')
     def check_dates(self) -> 'SearchSchema':
-        # Check if latest departureare not in past
+        # Check if latest departure not in past
         today = date.today()
         if self.latest_departure and self.latest_departure < today:
             raise ValueError(f"Latest departure ({self.latest_departure}) cannot be in the past.")
