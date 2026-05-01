@@ -198,13 +198,24 @@ def write_searches_to_db(session, searches: list[SearchSchema]) -> None:
 def read_searches_from_db(session) -> list[SearchSchema]:
     try:
         search_list = []
+        needs_commit = False
         search_records = session.query(SearchDB).all()
         for search_record in search_records:
             try:
                 search_list.append(SearchSchema.model_validate(search_record.__dict__))
+            except (ValidationError, ValueError) as e:
+                logger.info(f"Deleting invalid/expired DB search (ID: {search_record.id}): {e}")
+                session.delete(search_record)
+                needs_commit = True
             except Exception as e:
-                logger.warning(f"Search in DB could not be loaded: {e}.")
+                logger.warning(f"Search ID {search_record.id} could not be loaded due to system error: {e}")
+
+        if needs_commit:
+            session.commit()
+            logger.info("Database cleanup committed.")
+
         return search_list
+    
     except Exception as e:
         logger.error(f"Failed to read searches from DB: {e}")
         return []
