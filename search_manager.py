@@ -84,7 +84,7 @@ def read_searches_from_google_sheets(
                     search_list.append(search)
 
                 except Exception as e:
-                    logger.error(f"Invalid search request {search_request}: {e}")
+                    logger.warning(f"Invalid search request {search_request}: {e}")
 
             if delete_after_processing:
                 start_row = 2
