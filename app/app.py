@@ -64,28 +64,36 @@ async def index(): return FileResponse("app/index.html")
 @app.get("/routes")
 def get_routes(archived: bool = False):
     df = get_processed_data(archived)
-    routes = df[['origin', 'destination']].drop_duplicates()
+    routes = df[['origin', 'destination', 'created_by']].drop_duplicates()
     return [
         {
-            "label": f"{r.origin} to {r.destination}",
-            "value": f"{r.origin}|{r.destination}"
+            "label": f"{r.origin} to {r.destination} ({r.created_by})",
+            "value": f"{r.origin}|{r.destination}|{r.created_by}"
         } for r in routes.itertuples()
             ]
 
 
 @app.get("/dates")
 def get_dates(route: str, archived: bool = False):
-    origin, dest = route.split('|')
+    origin, dest, user = route.split('|')
     df = get_processed_data(archived)
-    relevant = df[(df['origin'] == origin) & (df['destination'] == dest)]
+    relevant = (
+        df[(df['origin'] == origin) 
+           & (df['destination'] == dest) 
+           & (df['created_by'] == user)]
+    )
     return sorted(pd.to_datetime(relevant['scraped_at']).dt.date.unique().astype(str), reverse=True)
 
 
 @app.get("/line-chart")
 def get_line_chart(route: str, archived: bool = False):
-    origin, dest = route.split('|')
+    origin, dest, user = route.split('|')
     df = get_processed_data(archived)
-    df_temp = df[(df['origin'] == origin) & (df['destination'] == dest)].copy()
+    df_temp = (
+        df[(df['origin'] == origin) 
+           & (df['destination'] == dest) 
+           & (df['created_by'] == user)]
+           ).copy()
     df_temp['scraped_at'] = pd.to_datetime(df_temp['scraped_at']).dt.date
 
     is_one_way = df_temp['return_date'].isna().all()
@@ -153,12 +161,13 @@ def get_line_chart(route: str, archived: bool = False):
 
 @app.get("/heatmap")
 def get_heatmap(route: str, date: str, archived: bool = False):
-    origin, dest = route.split('|')
+    origin, dest, user = route.split('|')
     df = get_processed_data(archived)
     mask = (
         (df['origin'] == origin)
         & (df['destination'] == dest)
         & (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == date)
+        & (df['created_by'] == user)
         )
     f_df = df[mask].copy()
     if f_df.empty:
@@ -224,18 +233,21 @@ def get_heatmap(route: str, date: str, archived: bool = False):
 
 @app.get("/table")
 def get_table(route: str, scrape_date: str, dep_date: str, ret_date: str | None = None, archived: bool = False):
-    origin, dest = route.split('|')
+    origin, dest, user = route.split('|')
     df = get_processed_data(archived)
     df['days_stayed'] = (pd.to_datetime(df['return_date']) - pd.to_datetime(df['departure_date'])).dt.days + 1
     df['days_stayed'] = df['days_stayed'].fillna(0)
 
     df = df[[
         'origin', 'destination', 'departure_date', 'return_date',
-        'price', 'airline', 'stops', 'flight_time', 'duration', 'scraped_at', 'days_stayed'
+        'price', 'airline', 'stops', 'flight_time', 'duration', 'scraped_at', 'days_stayed', 'created_by'
         ]]
-    mask = (df['origin'] == origin) & (df['destination'] == dest) & \
-           (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date) & \
-           (pd.to_datetime(df['departure_date']).dt.date.astype(str) == dep_date)
+    mask = (
+        (df['origin'] == origin) & (df['destination'] == dest)
+        & (pd.to_datetime(df['scraped_at']).dt.date.astype(str) == scrape_date)
+        & (pd.to_datetime(df['departure_date']).dt.date.astype(str) == dep_date)
+        & (df['created_by'] == user)
+        )
 
     if ret_date and ret_date != 'null':
         mask &= (pd.to_datetime(df['return_date']).dt.date.astype(str) == ret_date)
