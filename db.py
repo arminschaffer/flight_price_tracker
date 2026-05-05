@@ -25,8 +25,8 @@ class SearchDB(Base):
     min_stay_days: Mapped[int] = mapped_column(Integer, nullable=True)
     max_stay_days: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    max_stops: Mapped[int] = mapped_column(Integer, default=0)
-    max_duration_hours: Mapped[int] = mapped_column(Integer, default=12)
+    max_stops: Mapped[int] = mapped_column(Integer, nullable=True)
+    max_duration_hours: Mapped[int] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     created_by: Mapped[str] = mapped_column(String(100), default="admin")
