@@ -79,7 +79,7 @@ class GoogleFlightsScraper:
 
     @property
     def wait(self):
-        return WebDriverWait(self.driver, 15)
+        return WebDriverWait(self.driver, 30)
 
     @property
     def wait_short(self):
