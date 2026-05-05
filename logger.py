@@ -13,7 +13,6 @@ def logger_setup(logger_file_name: str, logger_dir: str = "logs/", logger_name: 
 
     logger.propagate = False
 
-    # Rotate logs at 5MB, keep 3 backup files
     file_handler = RotatingFileHandler(
         Path(logger_dir).joinpath(logger_file_name), maxBytes=2 * 1024 * 1024, backupCount=3, delay=False
     )

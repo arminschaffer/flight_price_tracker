@@ -21,9 +21,7 @@ services:
       - ./flight_database.db:/app/flight_database.db:Z
       - ./searches.json:/app/searches.json:Z
       - ./google_credentials.json:/app/google_credentials.json:Z
-      - ./logs/tracker.log:/app/logs/tracker.log:Z
-      - ./logs/scraper.log:/app/logs/scraper.log:Z
-      - ./logs/search_manager.log:/app/logs/search_manager.log:Z
+      - ./logs:/app/logs:Z
     env_file:
       - .env
     init: true
