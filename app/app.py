@@ -190,6 +190,7 @@ def get_heatmap(route: str, date: str, archived: bool = False):
             index='destination', columns='departure_date', values='airline', aggfunc='first'
             )
         stay_df = z_df.copy().fillna(0)
+        all_y = airline_df.index
     else:
         f_df['days_stayed'] = (pd.to_datetime(f_df['return_date']) - pd.to_datetime(f_df['departure_date'])).dt.days + 1
         z_df = f_df.pivot_table(index='departure_date', columns='return_date', values='price', aggfunc='min')
@@ -199,9 +200,10 @@ def get_heatmap(route: str, date: str, archived: bool = False):
         stay_df = f_df.pivot_table(
             index='departure_date', columns='return_date', values='days_stayed', aggfunc='first'
             )
+        all_y = pd.date_range(start=min(z_df.index), end=max(z_df.index)).date
 
     all_x = pd.date_range(start=min(z_df.columns), end=max(z_df.columns)).date
-    z_df = z_df.reindex(columns=all_x)
+    z_df = z_df.reindex(index=all_y, columns=all_x)
 
     z_values = z_df.values
     z_indexed = np.digitize(z_values, levels)
@@ -211,8 +213,8 @@ def get_heatmap(route: str, date: str, archived: bool = False):
 
     z_values = z_values.astype(object)
     z_indexed = z_indexed.astype(object)
-    airline_df = airline_df.reindex(columns=all_x).values.astype(object)
-    stay_df = stay_df.reindex(columns=all_x).values.astype(object)
+    airline_df = airline_df.reindex(index=all_y, columns=all_x).values.astype(object)
+    stay_df = stay_df.reindex(index=all_y, columns=all_x).values.astype(object)
 
     z_indexed[mask] = None
     z_values[mask] = None
