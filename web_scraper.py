@@ -13,6 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 from schemas import ConnectionSchema, FlightSchema
 from logger import logger_setup
@@ -211,9 +212,11 @@ class GoogleFlightsScraper:
 
             # Data Extraction
             # Wait for flight cards to load
-            _ = self.wait.until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, Selectors.FLIGHT_CARD))
-            )
+            try:
+                _ = self.wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, Selectors.FLIGHT_CARD)))
+            except TimeoutException:
+                logger.error("Timed out waiting for flight cards to appear!")
+                raise
             # Buffer to ensure all elements are loaded
             time.sleep(4)
             # Scrape flight cards
