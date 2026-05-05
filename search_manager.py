@@ -183,7 +183,7 @@ def write_searches_to_db(session, searches: list[SearchSchema]) -> None:
                 session.flush()
                 logger.info(f"New search queued (ID: {instance.id}).")
         except Exception as e:
-            logger.error(f"Error adding search {search}: {e}")
+            logger.error(f"Error adding search to db: {search}: {e}")
 
     # commit new searches to DB
     if added_count > 0:
