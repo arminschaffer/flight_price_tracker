@@ -7,9 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import create_engine
 
+from db import DATABASE
+
 
 # --- Configuration ---
-DATABASE = "flight_database.db"
 PORT = 8000
 QUANTILES = [0., 0.01, 0.1, 0.25, 0.75, 0.9, 0.99, 1.]
 QUANTILE_COLORS = [
@@ -78,8 +79,8 @@ def get_dates(route: str, archived: bool = False):
     origin, dest, user = route.split('|')
     df = get_processed_data(archived)
     relevant = (
-        df[(df['origin'] == origin) 
-           & (df['destination'] == dest) 
+        df[(df['origin'] == origin)
+           & (df['destination'] == dest)
            & (df['created_by'] == user)]
     )
     return sorted(pd.to_datetime(relevant['scraped_at']).dt.date.unique().astype(str), reverse=True)
@@ -90,8 +91,8 @@ def get_line_chart(route: str, archived: bool = False):
     origin, dest, user = route.split('|')
     df = get_processed_data(archived)
     df_temp = (
-        df[(df['origin'] == origin) 
-           & (df['destination'] == dest) 
+        df[(df['origin'] == origin)
+           & (df['destination'] == dest)
            & (df['created_by'] == user)]
            ).copy()
     df_temp['scraped_at'] = pd.to_datetime(df_temp['scraped_at']).dt.date

@@ -8,6 +8,7 @@ dependencies = [
     "apiclient>=1.0.4",
     "dash>=3.3.0",
     "fastapi>=0.136.1",
+    "google-api-python-client>=2.196.0",
     "gspread>=6.2.1",
     "oauth2client>=4.1.3",
     "pandas>=2.3.3",
