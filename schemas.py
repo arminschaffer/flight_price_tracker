@@ -19,8 +19,8 @@ class SearchSchema(BaseModel):
     min_stay_days: int | None = None
     max_stay_days: int | None = None
 
-    max_stops: int | None = None
-    max_duration_hours: int | None = None
+    max_stops: int = 12
+    max_duration_hours: int = 120
 
     created_at: datetime = Field(default_factory=datetime.now)
     created_by: str = "admin"
