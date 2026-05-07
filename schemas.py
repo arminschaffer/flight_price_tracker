@@ -19,8 +19,8 @@ class SearchSchema(BaseModel):
     min_stay_days: int | None = None
     max_stay_days: int | None = None
 
-    max_stops: int | None = None
-    max_duration_hours: int | None = None
+    max_stops: int = 12
+    max_duration_hours: int = 120
 
     created_at: datetime = Field(default_factory=datetime.now)
     created_by: str = "admin"
@@ -58,29 +58,35 @@ class SearchSchema(BaseModel):
                 except ValueError:
                     return v
         return v
-    
+
     @field_validator('max_stops', 'max_duration_hours', mode='before')
     @classmethod
     def empty_string_to_default(cls, v, info):
         if v == "":
             return cls.model_fields[info.field_name].default
         return v
-    
+
     @model_validator(mode='after')
     def check_dates(self) -> 'SearchSchema':
         # Check if latest departure not in past
         today = date.today()
         if self.latest_departure and self.latest_departure < today:
             raise ValueError(f"Latest departure ({self.latest_departure}) cannot be in the past.")
-        
+
         # Departure (earliest vs latest)
         if self.earliest_departure > self.latest_departure:
-            raise ValueError(f"Earliest departure ({self.earliest_departure}) cannot be after latest departure ({self.latest_departure})")
+            raise ValueError(
+                f"Earliest departure ({self.earliest_departure}) "
+                f"cannot be after latest departure ({self.latest_departure})"
+                )
 
         # Return (earliest vs latest)
         if self.earliest_return and self.latest_return:
             if self.earliest_return > self.latest_return:
-                raise ValueError(f"Earliest return ({self.earliest_return}) cannot be after latest return ({self.latest_return})")
+                raise ValueError(
+                    f"Earliest return ({self.earliest_return}) "
+                    "cannot be after latest return ({self.latest_return})"
+                    )
 
         return self
 
