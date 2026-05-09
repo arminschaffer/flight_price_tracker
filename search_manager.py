@@ -75,8 +75,6 @@ def read_searches_from_google_sheets(
             for search_request in search_requests:
                 try:
                     search_request = rename_dict_keys(search_request, HEADERS_MAP)
-                    search_request.pop('email', None)  # remove email for now
-                    # search_request["one_way"] = False
 
                     cleaned_data = {k: v for k, v in search_request.items() if v != ""}
 
@@ -128,6 +126,14 @@ def read_searches_from_json(filepath: str = "searches.json") -> list[SearchSchem
         return []
 
 
+def find_existing_record(session, search: SearchSchema) -> SearchDB:
+    instance = session.query(SearchDB).filter_by(
+        **search.model_dump(exclude={
+            'id', 'created_at', 'created_by', 'user_mail', 'connections', 'one_way'
+            })).first()
+    return instance
+
+
 def delete_searches_from_db(session, searches: list[SearchSchema]) -> None:
     if not searches:
         logger.info("No searches deleted.")
@@ -136,10 +142,7 @@ def delete_searches_from_db(session, searches: list[SearchSchema]) -> None:
     deleted_count = 0
     for search in searches:
         try:
-            instance = session.query(SearchDB).filter_by(
-                    **search.model_dump(exclude={
-                        'id', 'created_at', 'created_by', 'connections', 'one_way'
-                        })).first()
+            instance = find_existing_record(session, search)
 
             if instance:
                 session.delete(instance)
@@ -169,11 +172,8 @@ def write_searches_to_db(session, searches: list[SearchSchema]) -> None:
     added_count = 0
     for search in searches:
         try:
-            instance = session.query(SearchDB).filter_by(
-                **search.model_dump(exclude={
-                    'id', 'created_at', 'created_by', 'connections', 'one_way'
-                    })).first()
-
+            instance = find_existing_record(session, search)
+            
             if instance:
                 pass
             else:
@@ -297,7 +297,7 @@ def add_connections_to_search(search: SearchSchema) -> SearchSchema:
 
 
 def search_is_same(s1: SearchSchema, s2: SearchSchema) -> bool:
-    exclude_set = {'id', 'created_at', 'created_by', 'connections', 'one_way'}
+    exclude_set = {'id', 'created_at', 'created_by', 'user_mail', 'connections', 'one_way'}
     
     dict1 = s1.model_dump(exclude=exclude_set)
     dict2 = s2.model_dump(exclude=exclude_set)
@@ -372,10 +372,7 @@ def manage_searches(
 
 def update_search_id(session, search: SearchSchema) -> SearchSchema:
     try:
-        instance = session.query(SearchDB).filter_by(
-            **search.model_dump(exclude={'id', 'created_at', 'created_by', 'one_way'})
-            ).first()
-
+        instance = find_existing_record(session, search)
         if not instance:
             logger.warning(f"Search parameters not found in DB: {search}")
             raise ValueError("No matching search record found in database.")
@@ -393,11 +390,7 @@ def get_or_create_search_entry(session, search: SearchSchema) -> SearchSchema:
     Checks if a search with specific parameters exists,
     otherwise creates a new one.
     """
-    # Attempt to find the existing record
-    instance = session.query(SearchDB).filter_by(
-        **search.model_dump(exclude={
-            'id', 'created_at', 'created_by', 'connections', 'one_way'
-            })).first()
+    instance = find_existing_record(session, search)
 
     if instance:
         logger.info(f"Search found in DB (ID: {instance.id}).")

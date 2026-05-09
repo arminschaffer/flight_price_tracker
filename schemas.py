@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, EmailStr
 
 
 class SearchSchema(BaseModel):
@@ -24,6 +24,7 @@ class SearchSchema(BaseModel):
 
     created_at: datetime = Field(default_factory=datetime.now)
     created_by: str = "admin"
+    user_mail: EmailStr | None = None
 
     connections: list["ConnectionSchema"] = []
 

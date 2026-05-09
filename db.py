@@ -30,6 +30,7 @@ class SearchDB(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     created_by: Mapped[str] = mapped_column(String(100), default="admin")
+    user_mail: Mapped[str] = mapped_column(String(100), nullable=True)
 
     # Link to the flights and price list
     prices: Mapped[List["FlightDB"]] = relationship(
