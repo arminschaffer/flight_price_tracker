@@ -107,8 +107,8 @@ def notifier() -> None:
     mail_count = 0
 
     for group_key, df_group in df_grouped:
-        # user_mail_address = df_group.user_email.value
-        user_mail_address = TEST_MAIL_ADDRESS
+        user_mail_address = df_group.user_email.value
+        # user_mail_address = TEST_MAIL_ADDRESS
         if not user_mail_address:
             continue 
 

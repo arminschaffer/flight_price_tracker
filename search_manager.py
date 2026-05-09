@@ -51,7 +51,7 @@ def read_searches_from_google_sheets(
         "Max Stops": "max_stops",
         "Max Flight Duration": "max_duration_hours",
         "Name": "created_by",
-        "Email": "email"
+        "Email": "user_mail"
     }
 
     creds = Credentials.from_service_account_file(
@@ -173,7 +173,7 @@ def write_searches_to_db(session, searches: list[SearchSchema]) -> None:
     for search in searches:
         try:
             instance = find_existing_record(session, search)
-            
+
             if instance:
                 pass
             else:

@@ -8,6 +8,7 @@ from logger import logger_setup
 from tracker import run_tracker
 from search_manager import manage_searches
 from db import Session
+from email_notifier import notifier
 
 load_dotenv()
 
@@ -26,9 +27,17 @@ def run_full_tracker():
             run_tracker(SessionLocal, searches)
 
 
+def run_full_tracker_with_notification():
+    with Session() as SessionLocal:
+        searches = manage_searches(SessionLocal, read_google_sheets=True)
+        if searches:
+            run_tracker(SessionLocal, searches)
+    notifier()
+
+
 # Schedule the task
 schedule_time = str(os.getenv("SCHEDULE_TIME"))
-schedule.every().day.at(schedule_time).do(run_full_tracker)
+schedule.every().day.at(schedule_time).do(run_full_tracker_with_notification)
 
 
 def main():
