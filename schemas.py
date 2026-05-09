@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from pydantic import BaseModel, Field, field_validator, model_validator, EmailStr
+from email_validator import validate_email, EmailNotValidError
 
 
 class SearchSchema(BaseModel):
@@ -66,6 +67,18 @@ class SearchSchema(BaseModel):
         if v == "":
             return cls.model_fields[info.field_name].default
         return v
+    
+    @field_validator('user_mail', mode='before')
+    @classmethod
+    def validate_or_none(cls, v):
+        if not v or not isinstance(v, str):
+            return None
+        
+        try:
+            email_info = validate_email(v, check_deliverability=False)
+            return email_info.normalized
+        except EmailNotValidError:
+            return None
 
     @model_validator(mode='after')
     def check_dates(self) -> 'SearchSchema':
