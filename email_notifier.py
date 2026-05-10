@@ -78,7 +78,8 @@ def get_todays_data() -> pd.DataFrame:
     SELECT
         s.origin, 
         s.destination, 
-        s.created_by, 
+        s.created_by,
+        s.user_email,
         p.price_list, 
         p.scraped_at,
         f.price
