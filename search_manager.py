@@ -90,13 +90,14 @@ def read_searches_from_google_sheets(
 
                 sheet.delete_rows(start_row, end_row)
                 logger.info("Google Sheets requests cleared.")
+        return search_list
 
     except gspread.exceptions.APIError as e:
         print(f"API Error (Check permissions/sharing): {e}")
+        raise
     except Exception as e:
-        print(f"An error occurred: {e}")
-
-    return search_list
+        print(f"An error occurred while reading google sheets: {e}")
+        raise
 
 
 def read_searches_from_json(filepath: str = "searches.json") -> list[SearchSchema]:
@@ -121,8 +122,10 @@ def read_searches_from_json(filepath: str = "searches.json") -> list[SearchSchem
 
     except (json.JSONDecodeError, ValidationError) as e:
         logger.error(f"Loading searches from {filepath} failed: {e}")
-        return []
-
+        raise
+    except Exception as e:
+        print(f"An error occurred while reading {filepath}: {e}")
+        raise
 
 def find_existing_record(session, search: SearchSchema) -> SearchDB:
     instance = session.query(SearchDB).filter_by(
