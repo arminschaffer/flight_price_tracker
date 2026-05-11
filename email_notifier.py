@@ -79,7 +79,7 @@ def get_todays_data() -> pd.DataFrame:
         s.origin, 
         s.destination, 
         s.created_by,
-        s.user_email,
+        s.user_mail,
         p.price_list, 
         p.scraped_at,
         f.price
