@@ -93,10 +93,8 @@ def read_searches_from_google_sheets(
 
     except gspread.exceptions.APIError as e:
         print(f"API Error (Check permissions/sharing): {e}")
-        return []
     except Exception as e:
         print(f"An error occurred: {e}")
-        return []
 
     return search_list
 
