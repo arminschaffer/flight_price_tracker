@@ -358,7 +358,7 @@
 
     <section class="card card-pad section-gap">
       <div class="row">
-        <div class="col">
+        <div class="col" style="padding-bottom: 5px;">
           <label for="route-drop"><b>Route</b></label>
           <select id="route-drop"></select>
         </div>
@@ -640,7 +640,13 @@
         hm.x.map((retDate, j) => {
           const price = hm.original_z[i][j];
           const priceDisplay = (price !== null && price !== undefined) ? `€${Math.round(price)}` : 'N/A';
-          return [priceDisplay, hm.y[i], hm.x[j], hm.airline[i][j], hm.days_stayed[i][j]];
+          return [
+            priceDisplay, 
+            hm.y[i], 
+            hm.x[j], 
+            hm.airline[i][j] ?? 'N/A', 
+            hm.days_stayed[i][j] ?? 'N/A'
+          ];
         })
       );
 
@@ -695,6 +701,13 @@
       const layout = {
         ...baseLayout,
         margin: { t: 24, b: 105, l: 80, r: 20 },
+        hoverlabel: {
+          bgcolor: '#111a2e',
+          bordercolor: 'rgba(255,255,255,0.10)',
+          font: {
+            color: '#e8eefc'
+          }
+        },
         xaxis: {
           ...baseLayout.xaxis,
           tickangle: -45,
