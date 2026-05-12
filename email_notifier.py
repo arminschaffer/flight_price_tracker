@@ -73,7 +73,6 @@ def send_mail(recipient_email: str, subject: str, content: str) -> None:
 
 def get_todays_data() -> pd.DataFrame:
     today = datetime.now().date().isoformat()
-    print(today)
     query = f"""
     SELECT
         s.origin, 
@@ -108,9 +107,9 @@ def notifier() -> None:
     mail_count = 0
 
     for group_key, df_group in df_grouped:
-        user_mail_address = df_group.user_mail.value
-        # user_mail_address = TEST_MAIL_ADDRESS
-        if not user_mail_address:
+        user_mail_address = df_group.user_mail.values[0]
+
+        if pd.isna(user_mail_address):
             continue 
 
         origin, destination, user = group_key
