@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 import time
+from urllib import response
+import requests
 
 from logger import logger_setup
 from schemas import FlightSchema, ConnectionSchema
@@ -103,6 +105,18 @@ def run_tracker(SessionLocal, searches):
             )
         time_tracker = str(timedelta(seconds=int(time.time() - timer_tracker_start)))
         logger.info(f"Flight-price-tracker run completed ({time_tracker}).")
+
+        # Refresh api
+        api_url = "http://localhost:8000/refresh"
+        try:
+            response = requests.get(api_url)
+            if response.status_code == 200:
+                logger.info("API cache refresh triggered successfully.")
+            else:
+                logger.warning(f"API responded with an error code: {response.status_code}")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Could not notify API to refresh cache. Error: {e}")
 
     except Exception as e:
         logger.error(f"Scheduled task failed: {e}")
