@@ -36,7 +36,7 @@ EMAIL_CONTENT = """
 
     <p>
       You can view all details and track the fare here:<br>
-      <a href="https://arminsraspberrypi.tail4b4315.ts.net/">
+      <a href="https://arminsraspberrypi.tail4b4315.ts.net/?route={origin}%7C{destination}%7C{user}">
         Flight Price Tracker
       </a>
     </p>

@@ -483,12 +483,28 @@
         return;
       }
 
+      const urlParams = new URLSearchParams(window.location.search);
+      const routeToSelect = urlParams.get('route');
+      if (routeToSelect) {
+        // Only select it if it actually exists within the newly loaded dropdown options
+        const optionExists = Array.from(rDrop.options).some(opt => opt.value === routeToSelect);
+        if (optionExists) {
+          rDrop.value = routeToSelect;
+        }
+      }
+
       updateRoute();
     }
 
     async function updateRoute() {
       const route = document.getElementById('route-drop').value;
       if (!route) return;
+
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('route') !== route) {
+        url.searchParams.set('route', route);
+        window.history.pushState({ path: url.href }, '', url.href);
+      }
 
       const dates = await fetchData(`/dates?route=${encodeURIComponent(route)}`);
       const dDrop = document.getElementById('date-drop');
@@ -514,13 +530,13 @@
       const labels = ['>99%', '90-99%', '75-90%', '25-75%', '10-25%', '1-10%', '<1%'];
       const qKeys = ['1.0', '0.99', '0.9', '0.75', '0.25', '0.1', '0.01', '0.0'];
       const colors = [
-        'rgba(239, 68, 68, 0.40)',   // 1. Red (Keep)
-        'rgba(249, 115, 22, 0.40)',  // 2. Orange (Keep)
-        'rgba(245, 158, 11, 0.40)',  // 3. Amber (Keep)
-        'rgba(148, 163, 184, 0.32)', // 4. Neutral (Keep)
-        'rgba(167, 243, 208, 0.50)', // 5. Pale Mint (Light & Airy)
-        'rgba(52, 211, 153, 0.45)',  // 6. Emerald (Medium & Vibrant)
-        'rgba(6, 78, 59, 0.55)'      // 7. Dark Pine (Deep & Heavy
+        'rgba(239, 68, 68, 0.40)', 
+        'rgba(249, 115, 22, 0.40)', 
+        'rgba(245, 158, 11, 0.40)', 
+        'rgba(148, 163, 184, 0.32)', 
+        'rgba(167, 243, 208, 0.50)', 
+        'rgba(52, 211, 153, 0.45)', 
+        'rgba(6, 78, 59, 0.55)' 
         ];
 
       traces.push({
@@ -701,6 +717,7 @@
       const layout = {
         ...baseLayout,
         margin: { t: 24, b: 105, l: 80, r: 20 },
+        hovermode: 'closest',
         hoverlabel: {
           bgcolor: '#111a2e',
           bordercolor: 'rgba(255,255,255,0.10)',
