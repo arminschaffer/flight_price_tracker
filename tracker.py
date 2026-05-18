@@ -73,6 +73,21 @@ def check_departure_date_in_past(connection: ConnectionSchema) -> bool:
     return False
 
 
+def refresh_api():    
+    api_url = "http://dashboard:8000/refresh"
+    try:
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            logger.info("API cache refresh triggered successfully.")
+        else:
+            logger.warning(f"API responded with an error code: {response.status_code}")
+        return response
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Could not notify API to refresh cache. Error: {e}")
+        return None
+
+
 def run_tracker(SessionLocal, searches):
     try:
         timer_tracker_start = time.time()
@@ -105,18 +120,7 @@ def run_tracker(SessionLocal, searches):
             )
         time_tracker = str(timedelta(seconds=int(time.time() - timer_tracker_start)))
         logger.info(f"Flight-price-tracker run completed ({time_tracker}).")
-
-        # Refresh api
-        api_url = "http://localhost:8000/refresh"
-        try:
-            response = requests.get(api_url)
-            if response.status_code == 200:
-                logger.info("API cache refresh triggered successfully.")
-            else:
-                logger.warning(f"API responded with an error code: {response.status_code}")
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Could not notify API to refresh cache. Error: {e}")
+        _ = refresh_api()
 
     except Exception as e:
         logger.error(f"Scheduled task failed: {e}")
